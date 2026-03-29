@@ -15,18 +15,17 @@ const Tours = () => {
   const [page, setPage] = useState(0);
 
   // Using mock data instead of API during development
-  const allTours = toursMock || [];
   const toursPerPage = 8;
-  const displayedTours = allTours.slice(
+  const displayedTours = toursMock.slice(
     page * toursPerPage,
     (page + 1) * toursPerPage,
   );
 
   useEffect(() => {
-    const pages = Math.ceil(allTours.length / toursPerPage);
+    const pages = Math.ceil(toursMock.length / toursPerPage);
     setPageCount(pages);
     window.scrollTo(0, 0);
-  }, [page, allTours]);
+  }, [page]);
 
   return (
     <>

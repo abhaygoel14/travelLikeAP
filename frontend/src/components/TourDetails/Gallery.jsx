@@ -17,12 +17,16 @@ export default function Gallery({ images = [] }) {
   // keyboard navigation
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "ArrowRight") select(index + 1);
-      if (e.key === "ArrowLeft") select(index - 1);
+      if (e.key === "ArrowRight") {
+        setIndex((i) => (((i + 1) % safeLen) + safeLen) % safeLen);
+      }
+      if (e.key === "ArrowLeft") {
+        setIndex((i) => (((i - 1) % safeLen) + safeLen) % safeLen);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [index, safeLen]);
+  }, [safeLen]);
 
   // simple touch swipe
   useEffect(() => {
@@ -36,8 +40,8 @@ export default function Gallery({ images = [] }) {
       if (startX.current == null) return;
       const dx = e.changedTouches[0].clientX - startX.current;
       if (Math.abs(dx) > 40) {
-        if (dx < 0) select(index + 1);
-        else select(index - 1);
+        if (dx < 0) setIndex((i) => (((i + 1) % safeLen) + safeLen) % safeLen);
+        else setIndex((i) => (((i - 1) % safeLen) + safeLen) % safeLen);
       }
       startX.current = null;
     };
@@ -48,7 +52,7 @@ export default function Gallery({ images = [] }) {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchend", onTouchEnd);
     };
-  }, [index, safeLen]);
+  }, [safeLen]);
 
   // ensure index is valid when images change
   useEffect(() => {

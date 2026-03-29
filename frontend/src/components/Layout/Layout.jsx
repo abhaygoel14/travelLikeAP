@@ -1,7 +1,6 @@
 import React from "react";
 import Header from "./../Header/Header";
 import Routers from "../../router/Routers";
-import Footer from "./../Footer/Footer";
 
 const Layout = () => {
   return (
@@ -9,7 +8,6 @@ const Layout = () => {
       <Header />
       <Routers />
       {/* Footer temporarily hidden during development */}
-      {/* <Footer /> */}
     </>
   );
 };

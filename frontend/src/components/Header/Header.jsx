@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useContext, useState } from "react";
+import React, { useEffect, useRef, useContext } from "react";
 import { Container, Row, Button } from "reactstrap";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import Logo from "../../assets/images/logo.png";
@@ -16,21 +16,6 @@ const Header = () => {
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const { user, dispatch } = useContext(AuthContext);
-
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === "undefined") return "light";
-    return document.documentElement.getAttribute("data-theme") === "dark"
-      ? "dark"
-      : "light";
-  });
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") {
-      document.documentElement.setAttribute("data-theme", "dark");
-      setTheme("dark");
-    }
-  }, []);
 
   const logout = () => {
     dispatch({ type: "LOGOUT" });
@@ -53,20 +38,6 @@ const Header = () => {
   }, []);
 
   const toggleMenu = () => menuRef.current?.classList.toggle("show__menu");
-
-  const toggleTheme = () => {
-    const current = document.documentElement.getAttribute("data-theme");
-    const next = current === "dark" ? null : "dark";
-    if (next) {
-      document.documentElement.setAttribute("data-theme", next);
-      localStorage.setItem("theme", "dark");
-      setTheme("dark");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-      localStorage.removeItem("theme");
-      setTheme("light");
-    }
-  };
 
   return (
     <header className="header" ref={headerRef}>
