@@ -97,7 +97,7 @@ const Header = () => {
 
             <div className="nav__right d-flex align-items-center gap-4">
               <div className="nav__btns d-flex align-items-center gap-2">
-                <button
+                {/* <button
                   className="dark-toggle btn"
                   title="Toggle dark mode"
                   onClick={toggleTheme}
@@ -107,7 +107,7 @@ const Header = () => {
                   ) : (
                     <i className="ri-moon-line" aria-hidden="true"></i>
                   )}
-                </button>
+                </button> */}
 
                 {user ? (
                   <>

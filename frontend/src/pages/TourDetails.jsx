@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import "../styles/tour-details.css";
 import { Container, Row, Col } from "reactstrap";
 import Gallery from "../components/TourDetails/Gallery";
@@ -21,6 +21,16 @@ import img5 from "../assets/images/tour-img05.jpg";
 const TourDetails = () => {
   // Hardcoded demo data (will come from backend later)
   const images = [img1, img2, img3, img4, img5];
+
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } catch (e) {
+      // fallback for older browsers
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, []);
 
   const details = {
     pickup: "Central Station (09:00)",
