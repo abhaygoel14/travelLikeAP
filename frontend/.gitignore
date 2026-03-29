@@ -1,0 +1,4 @@
+node_modules
+
+# Ignore the large logo file that exceeds GitHub's 100MB limit
+src/assets/images/logo.png

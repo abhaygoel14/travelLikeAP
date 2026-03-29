@@ -1,0 +1,151 @@
+@import url("https://fonts.googleapis.com/css2?family=Island+Moments&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --primary-color: #ff3b3b; /* Primary CTA */
+  --secondary-color: #6fd1d4; /* Secondary CTA */
+  --heading-color: #0a0a0a; /* Heading / text */
+  --text-color: #0a0a0a; /* Body text */
+  --section-bg: #f5f7f8; /* Sections background */
+  --bg: #ffffff;
+  --white: #ffffff;
+  --surface: var(--white); /* card / surface background */
+  --muted-border: #dddddd;
+  --muted-bg: #cae5f4;
+  --muted-text: #6b7280;
+  --font-name: "Montserrat", sans-serif;
+  --subtitle-font-name: "Island Moments", cursive;
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  --muted-accent: #f3f4f6;
+}
+
+/* Dark theme variables — toggle by setting data-theme="dark" on the document element */
+[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --text-color: #f5f7f8;
+  --heading-color: #ffffff;
+  --section-bg: #0f1720;
+  --surface: #0f1720; /* use darker surface for cards in dark mode */
+  --muted-border: #1f2937;
+  --muted-bg: #042b2b;
+  --muted-text: #9ca3af;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-name);
+  background: var(--bg);
+  color: var(--text-color);
+}
+
+/* smooth theme transition */
+html,
+body,
+#root {
+  transition:
+    background-color 320ms ease,
+    color 320ms ease;
+}
+
+section {
+  padding: 50px 0px;
+  background: var(--section-bg);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--heading-color);
+}
+
+a {
+  text-decoration: none;
+  color: unset;
+}
+ul {
+  list-style: none;
+}
+
+.primary__btn {
+  background: var(--primary-color) !important;
+  border: none !important;
+  border-radius: 50px !important;
+  padding: 0.4rem 1.5rem !important;
+}
+
+.primary__btn a {
+  font-size: 1.1rem;
+  text-decoration: none;
+  color: var(--white);
+}
+.primary__btn a:hover {
+  color: inherit;
+}
+.secondary__btn {
+  background: transparent !important;
+  color: var(--secondary-color) !important;
+  border: 1px solid var(--secondary-color) !important;
+  font-weight: 600 !important;
+  border-radius: 50px !important;
+}
+
+.secondary__btn:hover {
+  background: var(--secondary-color) !important;
+  color: var(--white) !important;
+}
+
+.secondary__btn a {
+  text-decoration: none;
+  font-size: 1.1rem;
+  color: var(--heading-color);
+}
+
+.secondary__btn a:hover {
+  color: inherit;
+}
+
+.section__subtitle {
+  background: var(--secondary-color);
+  font-family: var(--subtitle-font-name);
+  width: max-content;
+  padding: 0px 0.5rem;
+  padding-right: 1rem;
+
+  border-radius: 50px;
+  font-weight: 500;
+  font-size: 1.7rem;
+  color: var(--heading-color);
+}
+
+/* =============== RESPONSIVE ================ */
+@media only screen and (max-width: 992px) {
+  .primary__btn a,
+  .secondary__btn a {
+    font-size: 0.9rem;
+  }
+
+  .primary__btn,
+  .secondary__btn,
+  .btn-dark {
+    padding: 0.2rem 1.1rem !important;
+  }
+
+  section {
+    padding: 40px 0;
+  }
+}
+
+@media only screen and (max-width: 768px) {
+  .section__subtitle {
+    font-size: 1.3rem;
+  }
+}
