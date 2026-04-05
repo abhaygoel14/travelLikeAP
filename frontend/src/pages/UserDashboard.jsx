@@ -1732,7 +1732,7 @@ const UserDashboard = () => {
     >
       <Container
         maxWidth="xl"
-        sx={{ pl: { xs: 1, sm: 2 }, pr: { xs: 1.5, sm: 2 } }}
+        sx={{ pl: { xs: 0, sm: 2 }, pr: { xs: 1.5, sm: 2 } }}
       >
         {status.message && (
           <Alert
@@ -2998,7 +2998,15 @@ const UserDashboard = () => {
                     </Paper>
                   )}
 
-                  <Grid container spacing={2.5}>
+                  <Grid
+                    container
+                    spacing={2.5}
+                    sx={{
+                      "& > .MuiGrid-item": {
+                        pl: { xs: "0 !important", sm: undefined },
+                      },
+                    }}
+                  >
                     <Grid item xs={12} lg={6}>
                       <Paper elevation={0} sx={sectionCardSx}>
                         <Stack
@@ -3236,7 +3244,15 @@ const UserDashboard = () => {
                     </Grid>
                   </Grid>
 
-                  <Grid container spacing={2.5}>
+                  <Grid
+                    container
+                    spacing={2.5}
+                    sx={{
+                      "& > .MuiGrid-item": {
+                        pl: { xs: "0 !important", sm: undefined },
+                      },
+                    }}
+                  >
                     <Grid item xs={12} lg={7}>
                       <Paper elevation={0} sx={sectionCardSx}>
                         <Stack

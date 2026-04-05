@@ -100,7 +100,10 @@ const Header = () => {
                         <strong>Hello, {firstName}</strong>
                       </span>
                     </button>
-                    <Button className="btn btn-dark" onClick={logout}>
+                    <Button
+                      className="btn btn-dark logout__btn"
+                      onClick={logout}
+                    >
                       Logout
                     </Button>
                   </>
