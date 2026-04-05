@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState } from "react";
 import { Container, Row, Col, Form, FormGroup, Button } from "reactstrap";
 import "../styles/login.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -87,7 +87,7 @@ const getPasswordValidationMessage = (password = "") => {
   if (!/\d/.test(password)) {
     return "Password must include at least one number.";
   }
-  if (!/[!@#$%^&*(),.?":{}|<>_\-+=~`\[\]\\/]/.test(password)) {
+  if (!/[^A-Za-z0-9]/.test(password)) {
     return "Password must include at least one special character.";
   }
 

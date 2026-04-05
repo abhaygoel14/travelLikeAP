@@ -50,7 +50,7 @@ const getPasswordValidationMessage = (password = "") => {
   if (!/[a-z]/.test(password))
     return "Password must include at least one lowercase letter.";
   if (!/\d/.test(password)) return "Password must include at least one number.";
-  if (!/[!@#$%^&*(),.?":{}|<>_\-+=~`\[\]\\/]/.test(password)) {
+  if (!/[^A-Za-z0-9]/.test(password)) {
     return "Password must include at least one special character.";
   }
 

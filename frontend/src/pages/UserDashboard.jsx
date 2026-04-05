@@ -27,7 +27,6 @@ import {
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import CollectionsIcon from "@mui/icons-material/Collections";
-import RateReviewIcon from "@mui/icons-material/RateReview";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import SaveIcon from "@mui/icons-material/Save";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
@@ -125,14 +124,6 @@ const compactNavButtonSx = {
   fontSize: "0.8rem",
   fontWeight: 600,
   textTransform: "none",
-};
-
-const headerActionButtonSx = {
-  ...compactPillButtonSx,
-  px: 1,
-  py: 0.3,
-  minHeight: 28,
-  fontSize: "0.76rem",
 };
 
 const toolbarIconButtonSx = {
@@ -607,7 +598,7 @@ const UserDashboard = () => {
     return () => {
       active = false;
     };
-  }, [dispatch, user?.uid]);
+  }, [dispatch, user]);
 
   const firstName = useMemo(
     () => profile.firstName || profile.displayName || "Traveler",
@@ -737,7 +728,7 @@ const UserDashboard = () => {
         tabValue: 3,
       },
     ],
-    [featuredPlan],
+    [],
   );
 
   const discoverItems = useMemo(
