@@ -21,8 +21,8 @@ mongoose.set("strictQuery", false);
 const connectMongo = async () => {
   try {
     if (!process.env.MONGO_URI) {
-      console.log('MONGO_URI not set; skipping MongoDB connection')
-      return
+      console.log("MONGO_URI not set; skipping MongoDB connection");
+      return;
     }
     await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
