@@ -1,5 +1,5 @@
 import express from 'express'
-import { login, register } from '../Controllers/authController.js'
+import { loginHandler as login, registerHandler as register } from '../Controllers/pgUserController.js'
 // import bcrypt from 'bcryptjs'
 // import jwt from 'jsonwebtoken'
 

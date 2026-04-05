@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useContext } from "react";
+import React, { useEffect, useRef, useContext, useMemo } from "react";
 import { Container, Row, Button } from "reactstrap";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import Logo from "../../assets/images/logo.png";
+import userPlaceholder from "../../assets/images/user.png";
 import "./header.css";
 import { AuthContext } from "../../context/AuthContext";
 
@@ -9,6 +10,7 @@ const nav__links = [
   { path: "/home", display: "Home" },
   { path: "/about", display: "About" },
   { path: "/tours", display: "Tours" },
+  { path: "/users", display: "Users" },
 ];
 
 const Header = () => {
@@ -16,6 +18,17 @@ const Header = () => {
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const { user, dispatch } = useContext(AuthContext);
+
+  const firstName = useMemo(() => {
+    const source =
+      user?.firstName ||
+      user?.displayName ||
+      user?.username ||
+      user?.email ||
+      "Traveler";
+
+    return source.split("@")[0].trim().split(" ")[0] || "Traveler";
+  }, [user]);
 
   const logout = () => {
     dispatch({ type: "LOGOUT" });
@@ -44,10 +57,10 @@ const Header = () => {
       <Container>
         <Row>
           <div className="nav__wrapper d-flex align-items-center justify-content-between">
-            <div className="logo">
+            <Link to="/home" className="logo">
               <img src={Logo} alt="logo" />
               <span className="brand-text">Travel like AP</span>
-            </div>
+            </Link>
 
             <div className="navigation" ref={menuRef} onClick={toggleMenu}>
               <ul className="menu d-flex align-items-center gap-5">
@@ -68,21 +81,25 @@ const Header = () => {
 
             <div className="nav__right d-flex align-items-center gap-4">
               <div className="nav__btns d-flex align-items-center gap-2">
-                {/* <button
-                  className="dark-toggle btn"
-                  title="Toggle dark mode"
-                  onClick={toggleTheme}
-                >
-                  {theme === "dark" ? (
-                    <i className="ri-sun-line" aria-hidden="true"></i>
-                  ) : (
-                    <i className="ri-moon-line" aria-hidden="true"></i>
-                  )}
-                </button> */}
-
                 {user ? (
                   <>
-                    <h5 className="mb-0">{user.username}</h5>
+                    <button
+                      type="button"
+                      className="profile__summary"
+                      onClick={() => navigate("/dashboard")}
+                    >
+                      <img
+                        src={user?.photoURL || userPlaceholder}
+                        alt={firstName}
+                        className="profile__avatar"
+                        onError={(event) => {
+                          event.currentTarget.src = userPlaceholder;
+                        }}
+                      />
+                      <span className="profile__details">
+                        <strong>Hello, {firstName}</strong>
+                      </span>
+                    </button>
                     <Button className="btn btn-dark" onClick={logout}>
                       Logout
                     </Button>

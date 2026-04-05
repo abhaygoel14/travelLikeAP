@@ -1,0 +1,36 @@
+-- Initial schema for TravelBuddy (Postgres)
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  role TEXT DEFAULT 'user',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tours (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC(10,2) DEFAULT 0,
+  duration INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS bookings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tour_id INTEGER NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'booked',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tour_id INTEGER NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);

@@ -1,13 +1,24 @@
+@import url("https://fonts.cdnfonts.com/css/gagalin");
+
 .header {
   width: 100%;
+  max-width: 100%;
   height: 80px;
   line-height: 80px;
+  overflow-x: clip;
+}
+
+.nav__wrapper {
+  width: 100%;
+  min-width: 0;
+  gap: 1rem;
 }
 
 .logo {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
+  text-decoration: none;
 }
 
 .logo img {
@@ -18,12 +29,13 @@
 }
 
 .brand-text {
-  font-family: "AP Parallel", "Island Moments", "Montserrat", sans-serif;
+  font-family: "Gagalin", "AP Parallel", "Montserrat", sans-serif;
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--heading-color) !important;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   line-height: 1;
+  text-transform: none;
 }
 
 .menu {
@@ -73,6 +85,51 @@
 }
 .nav__right .nav__btns .btn a {
   color: inherit !important;
+}
+
+.profile__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--muted-border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.profile__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--secondary-color);
+}
+
+.profile__details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+
+.profile__details strong {
+  color: var(--heading-color);
+  font-size: 0.95rem;
+  display: block;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile__details small {
+  color: var(--text-color);
+  font-size: 0.75rem;
 }
 
 .sticky__header {
@@ -163,5 +220,24 @@
 
   .menu {
     width: calc(100% - 50%);
+  }
+
+  .nav__right,
+  .nav__btns {
+    min-width: 0;
+    gap: 0.5rem !important;
+  }
+
+  .profile__summary {
+    max-width: calc(100vw - 170px);
+    padding: 0.35rem 0.6rem;
+  }
+
+  .profile__details strong {
+    max-width: 6rem;
+  }
+
+  .profile__details small {
+    display: none;
   }
 }

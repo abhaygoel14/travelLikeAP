@@ -18,8 +18,12 @@ const corsOptions = {
 };
 
 mongoose.set("strictQuery", false);
-const connect = async () => {
+const connectMongo = async () => {
   try {
+    if (!process.env.MONGO_URI) {
+      console.log('MONGO_URI not set; skipping MongoDB connection')
+      return
+    }
     await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -27,7 +31,7 @@ const connect = async () => {
 
     console.log("MongoDB connected");
   } catch (error) {
-    console.log("MongoDB connected failed");
+    console.log("MongoDB connection failed", error.message);
   }
 };
 
@@ -45,6 +49,7 @@ app.get("/health", (req, res) => {
 });
 
 app.listen(port, () => {
-  connect();
+  // if DATABASE_URL is not set, try connecting to MongoDB (legacy)
+  if (!process.env.DATABASE_URL) connectMongo();
   console.log("server listening on port", port);
 });

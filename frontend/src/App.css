@@ -48,9 +48,28 @@ body {
 html,
 body,
 #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   transition:
     background-color 320ms ease,
     color 320ms ease;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+  max-width: 100%;
+}
+
+main,
+section,
+.container,
+.container-fluid {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 section {

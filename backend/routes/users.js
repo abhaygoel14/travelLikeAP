@@ -1,5 +1,5 @@
 import express from 'express'
-import { deleteUser, getAllUser, getSingleUser, updateUser } from '../Controllers/userController.js'
+import { deleteUser, getAllUser, getSingleUser, updateUser } from '../Controllers/pgUserController.js'
 
 import { verifyAdmin, verifyUser } from '../utils/verifyToken.js'
 

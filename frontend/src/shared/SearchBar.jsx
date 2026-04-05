@@ -7,25 +7,44 @@ import { useNavigate } from 'react-router-dom'
 const SearchBar = () => {
    const locationRef = useRef('')
    const distanceRef = useRef(0)
-   const maxGroupSizeRef = useRef(0)
+   const startDateRef = useRef('')
+   const endDateRef = useRef('')
    const navigate = useNavigate()
 
    const searchHandler = async() => {
       const location = locationRef.current.value
       const distance = distanceRef.current.value
-      const maxGroupSize = maxGroupSizeRef.current.value
+      const startDate = startDateRef.current.value
+      const endDate = endDateRef.current.value
 
-      if (location === '' || distance === '' || maxGroupSize === '') {
+      if (
+         location === '' ||
+         distance === '' ||
+         startDate === '' ||
+         endDate === ''
+      ) {
          return alert('All fields are required!')
       }
 
-      const res = await fetch(`${BASE_URL}/tours/search/getTourBySearch?city=${location}&distance=${distance}&maxGroupSize=${maxGroupSize}`)
-      
-      if(!res.ok) alert('Something went wrong')
+      if (new Date(startDate) > new Date(endDate)) {
+         return alert('Start date must be before end date')
+      }
+
+      const params = new URLSearchParams({
+         city: location,
+         distance,
+         startDate,
+         endDate,
+         
+      })
+
+      const res = await fetch(`${BASE_URL}/tours/search/getTourBySearch?${params.toString()}`)
+
+      if(!res.ok) return alert('Something went wrong')
 
       const result = await res.json()
 
-      navigate(`/tours/search?city=${location}&distance=${distance}&maxGroupSize=${maxGroupSize}`, {state: result.data})
+      navigate(`/tours/search?${params.toString()}`, { state: result.data })
    }
 
    return <Col lg="12">
@@ -45,13 +64,24 @@ const SearchBar = () => {
                   <input type="number" placeholder='Distance k/m' ref={distanceRef} />
                </div>
             </FormGroup>
-            <FormGroup className='d-flex gap-3 form__group form__group-last'>
-               <span><i class='ri-group-line'></i></span>
+
+            <FormGroup className='d-flex gap-3 form__group'>
+               <span><i class='ri-calendar-line'></i></span>
                <div>
-                  <h6>Max People</h6>
-                  <input type="number" placeholder='0' ref={maxGroupSizeRef} />
+                  <h6>Start Date</h6>
+                  <input type="date" ref={startDateRef} />
                </div>
             </FormGroup>
+
+            <FormGroup className='d-flex gap-3 form__group'>
+               <span><i class='ri-calendar-line'></i></span>
+               <div>
+                  <h6>End Date</h6>
+                  <input type="date" ref={endDateRef} />
+               </div>
+            </FormGroup>
+
+            
 
             <span className='search__icon' type='submit' onClick={searchHandler}>
                <i class='ri-search-line'></i>
