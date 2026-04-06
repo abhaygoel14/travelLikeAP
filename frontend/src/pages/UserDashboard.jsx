@@ -1519,7 +1519,10 @@ const UserDashboard = () => {
 
       ctx.fillStyle = "#0f172a";
       ctx.font = "700 36px Arial";
-      ctx.fillText("Travel like AP", 178, 125);
+      const receiptBrandPrefix = "Travel Like ";
+      ctx.fillText(receiptBrandPrefix, 178, 125);
+      ctx.fillStyle = "#ff2a23";
+      ctx.fillText("AP", 178 + ctx.measureText(receiptBrandPrefix).width, 125);
       ctx.font = "20px Arial";
       ctx.fillStyle = "#475569";
       ctx.fillText("Trip payment receipt", 178, 158);

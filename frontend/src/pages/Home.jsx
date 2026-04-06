@@ -61,10 +61,11 @@ const Home = () => {
                 <MediaWithShimmer
                   as="video"
                   src={heroVideo}
+                  poster={heroImg02}
                   controls
                   muted
                   playsInline
-                  preload="metadata"
+                  preload="auto"
                 />
               </div>
             </Col>

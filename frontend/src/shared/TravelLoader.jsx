@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./travel-loader.css";
 
 const SkeletonBlock = ({ className = "" }) => (
@@ -458,15 +458,64 @@ export const MediaWithShimmer = ({
   wrapperClassName = "",
   onLoad,
   onLoadedData,
+  onLoadedMetadata,
+  onCanPlay,
+  onCanPlayThrough,
+  onError,
   ...props
 }) => {
   const [loaded, setLoaded] = useState(false);
+  const mediaRef = useRef(null);
   const Tag = as;
+
+  useEffect(() => {
+    setLoaded(false);
+  }, [as, src]);
+
+  useEffect(() => {
+    const mediaElement = mediaRef.current;
+
+    if (!mediaElement) {
+      return undefined;
+    }
+
+    const markReady = () => {
+      setLoaded(true);
+    };
+
+    if (as === "video") {
+      if (typeof mediaElement.readyState === "number" && mediaElement.readyState >= 1) {
+        markReady();
+      }
+    } else if (mediaElement.complete) {
+      markReady();
+    }
+
+    mediaElement.addEventListener("loadedmetadata", markReady);
+    mediaElement.addEventListener("loadeddata", markReady);
+    mediaElement.addEventListener("canplay", markReady);
+    mediaElement.addEventListener("canplaythrough", markReady);
+
+    return () => {
+      mediaElement.removeEventListener("loadedmetadata", markReady);
+      mediaElement.removeEventListener("loadeddata", markReady);
+      mediaElement.removeEventListener("canplay", markReady);
+      mediaElement.removeEventListener("canplaythrough", markReady);
+    };
+  }, [as, src]);
 
   const handleReady = (event) => {
     setLoaded(true);
     onLoad?.(event);
     onLoadedData?.(event);
+    onLoadedMetadata?.(event);
+    onCanPlay?.(event);
+    onCanPlayThrough?.(event);
+  };
+
+  const handleError = (event) => {
+    setLoaded(true);
+    onError?.(event);
   };
 
   return (
@@ -475,11 +524,16 @@ export const MediaWithShimmer = ({
         <div className="travel-skeleton-block travel-media-placeholder" />
       )}
       <Tag
+        ref={mediaRef}
         src={src}
         alt={as === "video" ? undefined : alt}
         className={`${className} ${loaded ? "is-loaded" : "is-loading"}`.trim()}
         onLoad={handleReady}
         onLoadedData={handleReady}
+        onLoadedMetadata={handleReady}
+        onCanPlay={handleReady}
+        onCanPlayThrough={handleReady}
+        onError={handleError}
         {...props}
       />
     </div>

@@ -19,8 +19,11 @@ const ReceiptPanel = ({
   onBack,
   onDownloadReceipt,
   brandLogo,
-  brandName = "Travel like AP",
+  brandName = "Travel Like AP",
 }) => {
+  const normalizedBrandName = String(brandName || "Travel Like AP");
+  const hasApSuffix = /\bAP$/i.test(normalizedBrandName);
+
   return (
     <Box>
       <Stack
@@ -53,8 +56,17 @@ const ReceiptPanel = ({
               variant="rounded"
               sx={{ width: 34, height: 34, bgcolor: "#dbeafe" }}
             />
-            <Typography fontWeight={800} color="#2563eb">
-              {brandName}
+            <Typography fontWeight={800} color="#1c1917">
+              {hasApSuffix ? (
+                <>
+                  {normalizedBrandName.replace(/\s*AP$/i, "").trimEnd()}{" "}
+                  <Box component="span" sx={{ color: "var(--primary-color)" }}>
+                    AP
+                  </Box>
+                </>
+              ) : (
+                normalizedBrandName
+              )}
             </Typography>
           </Stack>
           <Button

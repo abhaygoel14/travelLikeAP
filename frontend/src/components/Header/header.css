@@ -55,6 +55,11 @@
   text-transform: none;
 }
 
+.brand-text__ap {
+  color: var(--primary-color) !important;
+  margin-left: 0.18rem;
+}
+
 .navigation {
   position: absolute;
   left: 50%;

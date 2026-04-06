@@ -2,34 +2,34 @@
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap");
 
 :root {
-  --primary-color: #ff3b3b; /* Primary CTA */
-  --secondary-color: #6fd1d4; /* Secondary CTA */
-  --heading-color: #0a0a0a; /* Heading / text */
-  --text-color: #0a0a0a; /* Body text */
-  --section-bg: #f5f7f8; /* Sections background */
+  --primary-color: #ff1f1f; /* logo AP red */
+  --secondary-color: #8fe4ea; /* logo mountain aqua */
+  --heading-color: #08090b; /* logo black */
+  --text-color: #16181d; /* body text */
+  --section-bg: #f7fbfc; /* soft sky background */
   --bg: #ffffff;
   --white: #ffffff;
   --surface: var(--white); /* card / surface background */
-  --muted-border: #dddddd;
-  --muted-bg: #cae5f4;
-  --muted-text: #6b7280;
+  --muted-border: #d7e4ea;
+  --muted-bg: #dff6f8;
+  --muted-text: #5f6873;
   --font-name: "Montserrat", sans-serif;
   --subtitle-font-name: "Island Moments", cursive;
   --success-color: #22c55e;
   --danger-color: #ef4444;
-  --muted-accent: #f3f4f6;
+  --muted-accent: #f2f9fb;
 }
 
 /* Dark theme variables — toggle by setting data-theme="dark" on the document element */
 [data-theme="dark"] {
-  --bg: #0a0a0a;
+  --bg: #090b0d;
   --text-color: #f5f7f8;
   --heading-color: #ffffff;
-  --section-bg: #0f1720;
-  --surface: #0f1720; /* use darker surface for cards in dark mode */
-  --muted-border: #1f2937;
-  --muted-bg: #042b2b;
-  --muted-text: #9ca3af;
+  --section-bg: #10161b;
+  --surface: #11181d; /* use darker surface for cards in dark mode */
+  --muted-border: #22313a;
+  --muted-bg: #10333a;
+  --muted-text: #9fb1bb;
 }
 
 * {
