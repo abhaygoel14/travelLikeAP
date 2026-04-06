@@ -5,18 +5,28 @@
   max-width: 100%;
   height: 80px;
   line-height: 80px;
-  overflow-x: clip;
+  margin-top: 20px;
+  overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 .nav__wrapper {
   width: 100%;
+  max-width: 960px;
   min-width: 0;
+  margin: 0 auto;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
   gap: 1rem;
+  position: relative;
+  overflow: hidden;
 }
 
 .logo {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.6rem;
   min-width: 0;
   flex: 1 1 auto;
@@ -31,6 +41,10 @@
 }
 
 .brand-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
   font-family: "Gagalin", "AP Parallel", "Montserrat", sans-serif;
   font-size: 1.6rem;
   font-weight: 700;
@@ -41,15 +55,30 @@
   text-transform: none;
 }
 
+.navigation {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  width: min(100%, 560px);
+  max-width: calc(100% - 340px);
+  z-index: 1;
+}
+
 .menu {
+  width: 100%;
   margin-bottom: 0;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: clamp(0.85rem, 1.8vw, 1.75rem) !important;
 }
 
 .nav__item a {
   text-decoration: none;
   color: var(--heading-color) !important;
   font-weight: 500;
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 1.15vw, 1.22rem);
 }
 
 .nav__item a:hover {
@@ -64,6 +93,19 @@
   font-size: 1.3rem;
   color: var(--heading-color) !important;
   display: none;
+}
+
+.nav__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+  z-index: 2;
+}
+
+.nav__btns {
+  display: flex;
+  align-items: center;
 }
 
 /* Header buttons: force theme variables and override bootstrap defaults */
@@ -139,10 +181,12 @@
   width: 100%;
   height: 80px;
   line-height: 80px;
+  margin-top: 20px;
   background: var(--surface);
   position: sticky;
   top: 0;
   left: 0;
+  overflow-y: hidden;
   box-shadow: 3px 3px 8px -3px var(--muted-border);
   z-index: 999;
 }
@@ -161,10 +205,12 @@
 
   .navigation {
     width: 100%;
+    max-width: none;
     height: 100%;
     position: fixed;
     top: 0;
     left: 0;
+    transform: none;
     background: rgba(0, 0, 0, 0.4);
     z-index: 999;
     display: none;
@@ -220,12 +266,14 @@
   }
 
   .nav__wrapper {
+    display: flex !important;
     gap: 0.5rem;
     flex-wrap: nowrap;
     align-items: center;
   }
 
   .logo {
+    justify-content: flex-start;
     gap: 0.4rem;
     min-width: 0;
     flex: 1 1 auto;

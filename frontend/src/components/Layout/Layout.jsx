@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./../Header/Header";
 import Routers from "../../router/Routers";
-import TravelLoader from "../../shared/TravelLoader";
+import { PageRouteSkeleton } from "../../shared/TravelLoader";
 
 const Layout = () => {
   const location = useLocation();
@@ -21,7 +21,11 @@ const Layout = () => {
   return (
     <>
       <Header />
-      {routeLoading ? <TravelLoader cards={4} /> : <Routers />}
+      {routeLoading ? (
+        <PageRouteSkeleton pathname={location.pathname} />
+      ) : (
+        <Routers />
+      )}
       {/* Footer temporarily hidden during development */}
     </>
   );

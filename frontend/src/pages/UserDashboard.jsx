@@ -51,7 +51,7 @@ import { AuthContext } from "../context/AuthContext";
 import toursData from "../assets/data/tours";
 import galleryImages from "../components/Image-gallery/galleryImage";
 import ReceiptPanel from "../components/UserDashboard/ReceiptPanel";
-import { TravelCardSkeletons } from "../shared/TravelLoader";
+import { TravellerDashboardSkeleton } from "../shared/TravelLoader";
 import Logo from "../assets/images/logo.png";
 import { auth, realtimeDb, storage } from "../utils/firebaseConfig";
 
@@ -2489,7 +2489,18 @@ const UserDashboard = () => {
 
               {tabLoading && (
                 <Paper elevation={0} sx={sectionCardSx}>
-                  <TravelCardSkeletons count={tab === 1 ? 6 : 4} />
+                  <TravellerDashboardSkeleton
+                    embedded
+                    variant={
+                      isGalleryView
+                        ? "gallery"
+                        : isItineraryView
+                          ? "itinerary"
+                          : isReceiptView
+                            ? "receipt"
+                            : "overview"
+                    }
+                  />
                 </Paper>
               )}
 
