@@ -3,8 +3,8 @@
 .header {
   width: 100%;
   max-width: 100%;
-  height: 80px;
-  line-height: 80px;
+  height: 64px;
+  line-height: 64px;
   margin-top: 20px;
   overflow-x: hidden;
   overflow-y: hidden;
@@ -34,7 +34,7 @@
 }
 
 .logo img {
-  height: 44px;
+  height: 36px;
   width: auto;
   max-width: 220px;
   display: block;
@@ -46,7 +46,7 @@
   justify-content: flex-start;
   text-align: left;
   font-family: "Gagalin", "AP Parallel", "Montserrat", sans-serif;
-  font-size: 1.6rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--heading-color) !important;
   letter-spacing: 0.04em;
@@ -77,8 +77,8 @@
 .nav__item a {
   text-decoration: none;
   color: var(--heading-color) !important;
-  font-weight: 500;
-  font-size: clamp(1rem, 1.15vw, 1.22rem);
+  font-weight: 600;
+  font-size: clamp(1.08rem, 1.35vw, 1.38rem);
 }
 
 .nav__item a:hover {
@@ -113,6 +113,7 @@
   background: transparent !important;
   color: var(--heading-color) !important;
   border: 1px solid transparent !important;
+  padding: 0.32rem 0.8rem !important;
 }
 .nav__right .nav__btns .primary__btn {
   background: linear-gradient(
@@ -179,8 +180,8 @@
 
 .sticky__header {
   width: 100%;
-  height: 80px;
-  line-height: 80px;
+  height: 64px;
+  line-height: 64px;
   margin-top: 20px;
   background: var(--surface);
   position: sticky;
