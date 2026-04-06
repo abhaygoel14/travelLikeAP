@@ -1,5 +1,16 @@
-import React, { useContext, useState } from "react";
-import { Container, Row, Col, Form, FormGroup, Button } from "reactstrap";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Form,
+  FormGroup,
+  Button,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  Spinner,
+} from "reactstrap";
 import "../styles/login.css";
 import { Link, useNavigate } from "react-router-dom";
 import loginImg from "../assets/images/login.png";
@@ -22,6 +33,7 @@ import {
   fetchSignInMethodsForEmail,
   EmailAuthProvider,
   linkWithCredential,
+  sendPasswordResetEmail,
   signOut,
 } from "firebase/auth";
 import {
@@ -98,6 +110,21 @@ const getGreetingName = (profile) => {
   return resolveProfileName(profile) || "there";
 };
 
+const GOOGLE_SERVICE_DOWN_MESSAGE =
+  "Currently our service is down. Please come back after 1-2 hours. Thanks for your patience.";
+
+const isServiceOutageError = (error) => {
+  const details = `${error?.code || ""} ${error?.message || ""}`.toLowerCase();
+
+  return [
+    "500",
+    "internal-error",
+    "network-request-failed",
+    "failed to fetch",
+    "service unavailable",
+  ].some((keyword) => details.includes(keyword));
+};
+
 const Login = () => {
   const [credentials, setCredentials] = useState({
     email: "",
@@ -119,9 +146,97 @@ const Login = () => {
   const [emailFlowLoading, setEmailFlowLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [showGoogleRetryCta, setShowGoogleRetryCta] = useState(false);
+  const [serviceModal, setServiceModal] = useState({
+    open: false,
+    title: "Service is down",
+    message: GOOGLE_SERVICE_DOWN_MESSAGE,
+    showSignupAction: true,
+  });
 
+  const googleTimeoutRef = useRef(null);
+  const googleRetryTimeoutRef = useRef(null);
   const { dispatch } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      if (googleTimeoutRef.current) {
+        window.clearTimeout(googleTimeoutRef.current);
+      }
+
+      if (googleRetryTimeoutRef.current) {
+        window.clearTimeout(googleRetryTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const closeServiceModal = () => {
+    setServiceModal((prev) => ({ ...prev, open: false }));
+  };
+
+  const openServiceDownModal = (
+    message = GOOGLE_SERVICE_DOWN_MESSAGE,
+    options = {},
+  ) => {
+    setServiceModal({
+      open: true,
+      title: options.title || "Service is down",
+      message,
+      showSignupAction: options.showSignupAction ?? true,
+    });
+  };
+
+  const beginGoogleLoading = () => {
+    setGoogleLoading(true);
+    setShowGoogleRetryCta(false);
+
+    if (googleRetryTimeoutRef.current) {
+      window.clearTimeout(googleRetryTimeoutRef.current);
+      googleRetryTimeoutRef.current = null;
+    }
+
+    if (googleTimeoutRef.current) {
+      window.clearTimeout(googleTimeoutRef.current);
+    }
+
+    googleTimeoutRef.current = window.setTimeout(() => {
+      setGoogleLoading(false);
+      dispatch({
+        type: "LOGIN_FAILURE",
+        payload: GOOGLE_SERVICE_DOWN_MESSAGE,
+      });
+      openServiceDownModal(
+        "Google login is taking longer than usual. Service is down right now. Try with Sign up user.",
+      );
+    }, 12000);
+  };
+
+  const finishGoogleLoading = () => {
+    if (googleTimeoutRef.current) {
+      window.clearTimeout(googleTimeoutRef.current);
+      googleTimeoutRef.current = null;
+    }
+
+    setGoogleLoading(false);
+  };
+
+  const scheduleGoogleRetryPrompt = (
+    message = "Login with Google failed. Try again.",
+  ) => {
+    setShowGoogleRetryCta(false);
+
+    if (googleRetryTimeoutRef.current) {
+      window.clearTimeout(googleRetryTimeoutRef.current);
+    }
+
+    googleRetryTimeoutRef.current = window.setTimeout(() => {
+      setEmailStatus({ type: "error", text: message });
+      setShowGoogleRetryCta(true);
+    }, 10000);
+  };
 
   const ensureFirebaseReady = () => {
     if (firebaseReady && auth) {
@@ -150,8 +265,20 @@ const Login = () => {
       requestedProviders.includes("password") ||
       Boolean(extraData.hasPassword);
 
+    const providerPhotoURL = Array.isArray(firebaseUser.providerData)
+      ? firebaseUser.providerData
+          .map((item) => String(item?.photoURL || "").trim())
+          .find(Boolean) || ""
+      : "";
     const fallbackDisplayName =
       resolveProfileName(extraData, firebaseUser) || "Traveler";
+    const resolvedFallbackPhoto = String(
+      extraData.profileUrl ||
+        extraData.imageUrl ||
+        firebaseUser.photoURL ||
+        providerPhotoURL ||
+        "",
+    ).trim();
     const fallbackProfile = {
       uid: firebaseUser.uid,
       email: firebaseUser.email || "",
@@ -159,7 +286,11 @@ const Login = () => {
       lastName: extraData.lastName || "",
       displayName: fallbackDisplayName,
       username: extraData.username || fallbackDisplayName,
-      photoURL: firebaseUser.photoURL || "",
+      photoURL: resolvedFallbackPhoto,
+      profileUrl: resolvedFallbackPhoto,
+      imageUrl: String(
+        extraData.imageUrl || providerPhotoURL || resolvedFallbackPhoto || "",
+      ).trim(),
       phoneNumber: firebaseUser.phoneNumber || "",
       role: "user",
       provider:
@@ -204,6 +335,16 @@ const Login = () => {
     const derivedLastName = String(
       existingProfile.lastName || extraData.lastName || "",
     ).trim();
+    const resolvedProfilePhoto = String(
+      existingProfile.profileUrl ||
+        existingProfile.imageUrl ||
+        existingProfile.photoURL ||
+        extraData.profileUrl ||
+        extraData.imageUrl ||
+        firebaseUser.photoURL ||
+        providerPhotoURL ||
+        "",
+    ).trim();
 
     const baseProfile = {
       uid: firebaseUser.uid,
@@ -213,7 +354,15 @@ const Login = () => {
       displayName: resolvedDisplayName,
       username:
         existingProfile.username || extraData.username || resolvedDisplayName,
-      photoURL: existingProfile.photoURL || firebaseUser.photoURL || "",
+      photoURL: resolvedProfilePhoto,
+      profileUrl: resolvedProfilePhoto,
+      imageUrl: String(
+        existingProfile.imageUrl ||
+          extraData.imageUrl ||
+          providerPhotoURL ||
+          resolvedProfilePhoto ||
+          "",
+      ).trim(),
       phoneNumber:
         firebaseUser.phoneNumber || existingProfile.phoneNumber || "",
       role: existingProfile.role || "user",
@@ -482,12 +631,85 @@ const Login = () => {
       console.error("Email lookup error:", err);
       setEmailStep("identify");
       setEmailProviderHint("");
+
+      const lookupMessage = isServiceOutageError(err)
+        ? GOOGLE_SERVICE_DOWN_MESSAGE
+        : err.message || "Could not check this email right now.";
+
       setEmailStatus({
         type: "error",
-        text: err.message || "Could not check this email right now.",
+        text: lookupMessage,
       });
+
+      if (isServiceOutageError(err)) {
+        openServiceDownModal(lookupMessage);
+      }
     } finally {
       setEmailFlowLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!ensureFirebaseReady()) return;
+
+    const normalizedEmail = normalizeEmail(credentials.email);
+
+    if (!normalizedEmail) {
+      setEmailStatus({
+        type: "error",
+        text: "Please enter your email first so we can send a reset link.",
+      });
+      return;
+    }
+
+    if (!emailPattern.test(normalizedEmail)) {
+      setEmailStatus({
+        type: "error",
+        text: "Please enter a valid email address to reset your password.",
+      });
+      return;
+    }
+
+    setCredentials((prev) => ({
+      ...prev,
+      password: "",
+      confirmPassword: "",
+      canAddPasswordInstead: false,
+    }));
+    setEmailStep("identify");
+    setEmailProviderHint("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setResetPasswordLoading(true);
+
+    try {
+      await sendPasswordResetEmail(auth, normalizedEmail);
+      const resetSuccessMessage = `Password reset link sent to ${normalizedEmail}. Please check your inbox or spam folder.`;
+
+      setEmailStatus({
+        type: "success",
+        text: resetSuccessMessage,
+      });
+      openServiceDownModal(resetSuccessMessage, {
+        title: "Reset link sent",
+        showSignupAction: false,
+      });
+    } catch (err) {
+      console.error("Reset password error:", err);
+
+      const resetMessage = isServiceOutageError(err)
+        ? GOOGLE_SERVICE_DOWN_MESSAGE
+        : err?.code === "auth/user-not-found"
+          ? `We could not find an account for ${normalizedEmail}.`
+          : err.message || "Unable to send the reset password link right now.";
+
+      setEmailStatus({ type: "error", text: resetMessage });
+
+      if (isServiceOutageError(err)) {
+        openServiceDownModal(resetMessage);
+      }
+    } finally {
+      setResetPasswordLoading(false);
     }
   };
 
@@ -519,10 +741,39 @@ const Login = () => {
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
-      const shouldOfferPasswordCreation =
+
+      const isWrongPasswordError =
         err?.code === "auth/wrong-password" ||
-        err?.code === "auth/invalid-credential" ||
-        err?.code === "auth/user-not-found";
+        err?.code === "auth/invalid-credential";
+      const shouldOfferPasswordCreation = err?.code === "auth/user-not-found";
+      const detectedUserName =
+        matchedUserName && matchedUserName !== "there" ? matchedUserName : "";
+
+      if (isServiceOutageError(err)) {
+        dispatch({
+          type: "LOGIN_FAILURE",
+          payload: GOOGLE_SERVICE_DOWN_MESSAGE,
+        });
+        setEmailStatus({
+          type: "error",
+          text: GOOGLE_SERVICE_DOWN_MESSAGE,
+        });
+        openServiceDownModal(GOOGLE_SERVICE_DOWN_MESSAGE);
+        return;
+      }
+
+      if (isWrongPasswordError) {
+        const wrongPasswordMessage = detectedUserName
+          ? `Hello ${detectedUserName}, please enter the right password to continue.`
+          : "Please enter the right password to continue.";
+
+        dispatch({
+          type: "LOGIN_FAILURE",
+          payload: wrongPasswordMessage,
+        });
+        setEmailStatus({ type: "error", text: wrongPasswordMessage });
+        return;
+      }
 
       if (shouldOfferPasswordCreation && emailProviderHint !== "password") {
         dispatch({
@@ -535,12 +786,9 @@ const Login = () => {
       }
 
       const loginMessage =
-        err?.code === "auth/wrong-password" ||
-        err?.code === "auth/invalid-credential"
-          ? `Hello ${matchedUserName}, that password is incorrect. Please try again.`
-          : err?.code === "auth/user-not-found"
-            ? `Hello ${matchedUserName}, we could not find this account for password login.`
-            : err.message || "An error occurred during login";
+        err?.code === "auth/user-not-found"
+          ? `Hello ${matchedUserName}, we could not find this account for password login.`
+          : err.message || "An error occurred during login";
 
       dispatch({
         type: "LOGIN_FAILURE",
@@ -584,6 +832,7 @@ const Login = () => {
       return;
     }
 
+    beginGoogleLoading();
     dispatch({ type: "LOGIN_START" });
 
     try {
@@ -631,10 +880,11 @@ const Login = () => {
     } catch (err) {
       console.error("Create password error:", err);
 
-      const helperMessage =
-        err?.code === "auth/provider-already-linked" ||
-        err?.code === "auth/credential-already-in-use"
-          ? `Hello ${matchedUserName}, this account already has a password. Enter it to continue.`
+      const helperMessage = isServiceOutageError(err)
+        ? GOOGLE_SERVICE_DOWN_MESSAGE
+        : err?.code === "auth/provider-already-linked" ||
+            err?.code === "auth/credential-already-in-use"
+          ? `Hello ${matchedUserName}, this account already has a password. Please enter the right password to continue.`
           : err.message || "Unable to save your password right now.";
 
       if (
@@ -650,6 +900,15 @@ const Login = () => {
         payload: helperMessage,
       });
       setEmailStatus({ type: "error", text: helperMessage });
+
+      if (
+        err?.code !== "auth/provider-already-linked" &&
+        err?.code !== "auth/credential-already-in-use"
+      ) {
+        openServiceDownModal(helperMessage || GOOGLE_SERVICE_DOWN_MESSAGE);
+      }
+    } finally {
+      finishGoogleLoading();
     }
   };
 
@@ -659,6 +918,7 @@ const Login = () => {
 
     if (!ensureFirebaseReady()) return;
 
+    beginGoogleLoading();
     dispatch({ type: "LOGIN_START" });
 
     try {
@@ -677,11 +937,29 @@ const Login = () => {
       navigate("/dashboard");
     } catch (err) {
       console.error("Google sign-in error:", err);
+
+      const helperMessage =
+        err?.code === "auth/popup-closed-by-user"
+          ? "Login with Google failed. Try again."
+          : err?.code === "auth/popup-blocked"
+            ? "Popup was blocked. Please allow popups or try with Sign up user."
+            : isServiceOutageError(err)
+              ? GOOGLE_SERVICE_DOWN_MESSAGE
+              : GOOGLE_SERVICE_DOWN_MESSAGE;
+
       dispatch({
         type: "LOGIN_FAILURE",
-        payload: err.message,
+        payload: helperMessage,
       });
-      alert(err.message);
+
+      if (err?.code === "auth/popup-closed-by-user") {
+        scheduleGoogleRetryPrompt(helperMessage);
+      } else {
+        setEmailStatus({ type: "error", text: helperMessage });
+        openServiceDownModal(helperMessage);
+      }
+    } finally {
+      finishGoogleLoading();
     }
   };
 
@@ -899,6 +1177,16 @@ const Login = () => {
                         >
                           Login
                         </Button>
+                        <button
+                          type="button"
+                          className="auth__text__btn auth__text__btn--center"
+                          onClick={handleResetPassword}
+                          disabled={resetPasswordLoading}
+                        >
+                          {resetPasswordLoading
+                            ? "Sending reset link..."
+                            : "Forgot password? Send reset link"}
+                        </button>
                         {credentials.canAddPasswordInstead && (
                           <>
                             <Button
@@ -996,8 +1284,11 @@ const Login = () => {
                             <Button
                               className="btn secondary__btn auth__btn"
                               type="submit"
+                              disabled={googleLoading}
                             >
-                              Save password & continue
+                              {googleLoading
+                                ? "Connecting to Google..."
+                                : "Save password & continue"}
                             </Button>
                           </>
                         ) : (
@@ -1023,11 +1314,28 @@ const Login = () => {
                 {/* Google Login */}
                 {authMethod === "google" && (
                   <Form onSubmit={handleGoogleSignIn}>
+                    {emailStatus.text && (
+                      <p
+                        className={`auth__status ${emailStatus.type === "error" ? "auth__status--error" : "auth__status--success"}`}
+                      >
+                        {emailStatus.text}
+                      </p>
+                    )}
                     <Button
                       className="btn secondary__btn auth__btn w-100"
                       type="submit"
+                      disabled={googleLoading}
                     >
-                      Sign In with Google
+                      {googleLoading ? (
+                        <>
+                          <Spinner size="sm" className="me-2" />
+                          Signing in with Google...
+                        </>
+                      ) : showGoogleRetryCta ? (
+                        "Try Again with Google"
+                      ) : (
+                        "Sign In with Google"
+                      )}
                     </Button>
                   </Form>
                 )}
@@ -1097,6 +1405,34 @@ const Login = () => {
                 <p>
                   Don't have an account? <Link to="/register">Create</Link>
                 </p>
+
+                <Modal
+                  isOpen={serviceModal.open}
+                  toggle={closeServiceModal}
+                  centered
+                  className="service__down__modal"
+                >
+                  <ModalBody>
+                    <h4>{serviceModal.title}</h4>
+                    <p>{serviceModal.message}</p>
+                  </ModalBody>
+                  <ModalFooter>
+                    <Button color="light" onClick={closeServiceModal}>
+                      Okay
+                    </Button>
+                    {serviceModal.showSignupAction && (
+                      <Button
+                        className="btn primary__btn"
+                        onClick={() => {
+                          closeServiceModal();
+                          navigate("/register");
+                        }}
+                      >
+                        Sign up
+                      </Button>
+                    )}
+                  </ModalFooter>
+                </Modal>
               </div>
             </div>
           </Col>

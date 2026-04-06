@@ -98,7 +98,12 @@ const Header = () => {
                       onClick={() => navigate("/dashboard")}
                     >
                       <img
-                        src={user?.photoURL || userPlaceholder}
+                        src={
+                          user?.profileUrl ||
+                          user?.imageUrl ||
+                          user?.photoURL ||
+                          userPlaceholder
+                        }
                         alt={firstName}
                         className="profile__avatar"
                         onError={(event) => {

@@ -477,6 +477,9 @@ const normalizeProfile = (user = {}) => {
     .filter(Boolean)
     .join(" ")
     .trim();
+  const resolvedPhotoURL = String(
+    user.profileUrl || user.imageUrl || user.photoURL || "",
+  ).trim();
 
   return {
     ...user,
@@ -485,6 +488,9 @@ const normalizeProfile = (user = {}) => {
     displayName:
       safeDisplayName || resolvedFullName || safeUsername || "Traveler",
     username: safeUsername || resolvedFullName || cleanSource || "Traveler",
+    photoURL: resolvedPhotoURL,
+    profileUrl: String(user.profileUrl || resolvedPhotoURL || "").trim(),
+    imageUrl: String(user.imageUrl || resolvedPhotoURL || "").trim(),
     hobby: user.hobby || "",
     interests: Array.isArray(user.interests)
       ? user.interests
@@ -847,6 +853,8 @@ const UserDashboard = () => {
       const nextProfile = normalizeProfile({
         ...profile,
         photoURL: "",
+        profileUrl: "",
+        imageUrl: "",
         updatedAt: new Date().toISOString(),
       });
 
@@ -1669,6 +1677,8 @@ const UserDashboard = () => {
           .map((item) => item.trim())
           .filter(Boolean),
         photoURL: resolvedPhotoURL,
+        profileUrl: resolvedPhotoURL,
+        imageUrl: resolvedPhotoURL,
         updatedAt: new Date().toISOString(),
       });
 
@@ -2914,786 +2924,805 @@ const UserDashboard = () => {
                 </Paper>
               )}
 
-              {!tabLoading && !isGalleryView && !isItineraryView && !isReceiptView && (
-                <>
-                  {isEditingProfile && (
-                    <Paper elevation={0} sx={sectionCardSx}>
-                      <Stack
-                        direction={{ xs: "column", md: "row" }}
-                        justifyContent="space-between"
-                        alignItems={{ xs: "flex-start", md: "center" }}
-                        spacing={1}
-                        mb={2}
-                      >
-                        <Box>
-                          <Typography variant="h6" fontWeight={800}>
-                            Quick profile edit
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Update only the details that matter right now.
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          onClick={handleResetForm}
-                          sx={{ ...compactPillButtonSx }}
-                        >
-                          Cancel
-                        </Button>
-                      </Stack>
-
-                      <Grid container spacing={1.5}>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="First name"
-                            value={form.firstName}
-                            onChange={handleFieldChange("firstName")}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Last name"
-                            value={form.lastName}
-                            onChange={handleFieldChange("lastName")}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Phone number"
-                            value={form.phoneNumber}
-                            onChange={handleFieldChange("phoneNumber")}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Hobby"
-                            value={form.hobby}
-                            onChange={handleFieldChange("hobby")}
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Interests"
-                            value={form.interests}
-                            onChange={handleFieldChange("interests")}
-                            placeholder="Adventure, food, beaches"
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Stack
-                            direction={{ xs: "column", sm: "row" }}
-                            spacing={1}
-                          >
-                            <Button
-                              component="label"
-                              size="small"
-                              variant="outlined"
-                              startIcon={<PhotoCameraIcon />}
-                              sx={{
-                                ...compactPillButtonSx,
-                                borderColor: "#ddd1c6",
-                                color: "#1f2937",
-                              }}
-                            >
-                              Upload photo
-                              <input
-                                hidden
-                                accept="image/*"
-                                type="file"
-                                onChange={handleAvatarUpload}
-                              />
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="text"
-                              color="error"
-                              startIcon={<DeleteOutlineIcon />}
-                              onClick={handleDeletePhoto}
-                              disabled={!profile.photoURL && !form.photoURL}
-                              sx={{ ...compactPillButtonSx }}
-                            >
-                              Remove photo
-                            </Button>
-                          </Stack>
-                        </Grid>
-                      </Grid>
-                    </Paper>
-                  )}
-
-                  <Grid
-                    container
-                    spacing={2.5}
-                    sx={{
-                      "& > .MuiGrid-item": {
-                        pl: { xs: "0 !important", sm: undefined },
-                      },
-                    }}
-                  >
-                    <Grid item xs={12} lg={6}>
+              {!tabLoading &&
+                !isGalleryView &&
+                !isItineraryView &&
+                !isReceiptView && (
+                  <>
+                    {isEditingProfile && (
                       <Paper elevation={0} sx={sectionCardSx}>
                         <Stack
-                          direction="row"
+                          direction={{ xs: "column", md: "row" }}
                           justifyContent="space-between"
-                          alignItems="flex-start"
+                          alignItems={{ xs: "flex-start", md: "center" }}
+                          spacing={1}
                           mb={2}
                         >
                           <Box>
-                            <Typography
-                              variant="h5"
-                              fontWeight={800}
-                              color="#1c1917"
-                            >
-                              Upcoming Trip
+                            <Typography variant="h6" fontWeight={800}>
+                              Quick profile edit
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              Remember your upcoming trips.
+                              Update only the details that matter right now.
                             </Typography>
                           </Box>
                           <Button
                             size="small"
-                            component={RouterLink}
-                            to={
-                              featuredPlan
-                                ? `/tours/${featuredPlan.id}`
-                                : "/tours"
-                            }
-                            sx={{ ...compactPillButtonSx, color: "#2563eb" }}
+                            onClick={handleResetForm}
+                            sx={{ ...compactPillButtonSx }}
                           >
-                            Details
+                            Cancel
                           </Button>
                         </Stack>
 
                         <Grid container spacing={1.5}>
-                          {sideTrips.slice(0, 2).map((trip, index) => (
-                            <Grid
-                              item
-                              xs={12}
-                              sm={6}
-                              key={`${trip.title}-${index}`}
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="First name"
+                              value={form.firstName}
+                              onChange={handleFieldChange("firstName")}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Last name"
+                              value={form.lastName}
+                              onChange={handleFieldChange("lastName")}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Phone number"
+                              value={form.phoneNumber}
+                              onChange={handleFieldChange("phoneNumber")}
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Hobby"
+                              value={form.hobby}
+                              onChange={handleFieldChange("hobby")}
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Interests"
+                              value={form.interests}
+                              onChange={handleFieldChange("interests")}
+                              placeholder="Adventure, food, beaches"
+                            />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Stack
+                              direction={{ xs: "column", sm: "row" }}
+                              spacing={1}
                             >
-                              <Card
+                              <Button
+                                component="label"
+                                size="small"
+                                variant="outlined"
+                                startIcon={<PhotoCameraIcon />}
                                 sx={{
-                                  borderRadius: 3,
-                                  boxShadow: "none",
-                                  border: "1px solid #dbeafe",
+                                  ...compactPillButtonSx,
+                                  borderColor: "#ddd1c6",
+                                  color: "#1f2937",
                                 }}
                               >
-                                <CardContent>
-                                  <Box
-                                    component="img"
-                                    src={
-                                      galleryStrip[index] || featuredPlan?.photo
-                                    }
-                                    alt={trip.title}
-                                    sx={{
-                                      width: "100%",
-                                      height: 110,
-                                      objectFit: "cover",
-                                      borderRadius: 2.5,
-                                      mb: 1.25,
-                                    }}
-                                  />
-                                  <Typography
-                                    fontWeight={700}
-                                    sx={{ color: "#1c1917" }}
-                                  >
-                                    {trip.title}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    display="block"
-                                  >
-                                    {trip.city || "Travel destination"}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ color: "#64748b" }}
-                                  >
-                                    {trip.date} • {trip.status}
-                                  </Typography>
-
-                                  <Stack
-                                    direction="row"
-                                    justifyContent="space-between"
-                                    alignItems="center"
-                                    sx={{ mt: 1.5 }}
-                                  >
-                                    <Typography
-                                      fontSize="0.82rem"
-                                      fontWeight={700}
-                                    >
-                                      Budget: ${trip.budget || 990}
-                                    </Typography>
-                                    <Stack direction="row" spacing={0.5}>
-                                      <Button
-                                        size="small"
-                                        onClick={() =>
-                                          handleEditCollectionItem(
-                                            "upcomingTrips",
-                                            index,
-                                          )
-                                        }
-                                        sx={{
-                                          ...compactPillButtonSx,
-                                          minWidth: 0,
-                                          px: 1,
-                                        }}
-                                      >
-                                        Edit
-                                      </Button>
-                                      <Button
-                                        size="small"
-                                        color="error"
-                                        onClick={() =>
-                                          handleDeleteCollectionItem(
-                                            "upcomingTrips",
-                                            index,
-                                            "Trip removed from your dashboard.",
-                                          )
-                                        }
-                                        sx={{
-                                          ...compactPillButtonSx,
-                                          minWidth: 0,
-                                          px: 1,
-                                        }}
-                                      >
-                                        Delete
-                                      </Button>
-                                    </Stack>
-                                  </Stack>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
+                                Upload photo
+                                <input
+                                  hidden
+                                  accept="image/*"
+                                  type="file"
+                                  onChange={handleAvatarUpload}
+                                />
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="text"
+                                color="error"
+                                startIcon={<DeleteOutlineIcon />}
+                                onClick={handleDeletePhoto}
+                                disabled={!profile.photoURL && !form.photoURL}
+                                sx={{ ...compactPillButtonSx }}
+                              >
+                                Remove photo
+                              </Button>
+                            </Stack>
+                          </Grid>
                         </Grid>
                       </Paper>
-                    </Grid>
+                    )}
 
-                    <Grid item xs={12} lg={6}>
-                      <Paper elevation={0} sx={sectionCardSx}>
-                        <Stack
-                          direction="row"
-                          justifyContent="space-between"
-                          alignItems="flex-start"
-                          mb={2}
-                        >
-                          <Box>
-                            <Typography
-                              variant="h5"
-                              fontWeight={800}
-                              color="#1c1917"
-                            >
-                              Travel Snapshot
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Check in on your next dream locations.
-                            </Typography>
-                          </Box>
-                          <Button
-                            size="small"
-                            component={RouterLink}
-                            to="/tours"
-                            sx={{ ...compactPillButtonSx, color: "#2563eb" }}
-                          >
-                            Expand
-                          </Button>
-                        </Stack>
-
-                        <Stack spacing={1.1} sx={{ mt: 0.5 }}>
-                          {friendTrips.map((trip) => (
-                            <Paper
-                              key={`${trip.name}-${trip.place}`}
-                              elevation={0}
-                              sx={{
-                                p: 1.1,
-                                borderRadius: 3,
-                                border: "1px solid #dbeafe",
-                                bgcolor: "#f8fbff",
-                              }}
-                            >
-                              <Stack
-                                direction="row"
-                                justifyContent="space-between"
-                                spacing={1}
-                              >
-                                <Box>
-                                  <Typography
-                                    fontSize="0.88rem"
-                                    fontWeight={700}
-                                    color="#1c1917"
-                                  >
-                                    {trip.name}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    display="block"
-                                  >
-                                    {trip.note}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ color: "#2563eb" }}
-                                  >
-                                    {trip.place}
-                                  </Typography>
-                                </Box>
-                                <Button
-                                  size="small"
-                                  component={RouterLink}
-                                  to={trip.to}
-                                  variant="contained"
-                                  sx={{
-                                    ...compactPillButtonSx,
-                                    alignSelf: "center",
-                                    bgcolor: "#2563eb",
-                                    color: "#fff",
-                                    boxShadow: "none",
-                                    "&:hover": {
-                                      bgcolor: "#1d4ed8",
-                                      boxShadow: "none",
-                                    },
-                                  }}
-                                >
-                                  Join now
-                                </Button>
-                              </Stack>
-                            </Paper>
-                          ))}
-                        </Stack>
-                      </Paper>
-                    </Grid>
-                  </Grid>
-
-                  <Grid
-                    container
-                    spacing={2.5}
-                    sx={{
-                      "& > .MuiGrid-item": {
-                        pl: { xs: "0 !important", sm: undefined },
-                      },
-                    }}
-                  >
-                    <Grid item xs={12} lg={7}>
-                      <Paper elevation={0} sx={sectionCardSx}>
-                        <Stack
-                          direction="row"
-                          justifyContent="space-between"
-                          alignItems="flex-start"
-                          mb={2}
-                        >
-                          <Box>
-                            <Typography
-                              variant="h5"
-                              fontWeight={800}
-                              color="#1c1917"
-                            >
-                              For your next trip
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              These are easy wins you can plan right now.
-                            </Typography>
-                          </Box>
-                          <Button
-                            component={RouterLink}
-                            to="/tours"
-                            size="small"
-                            sx={{ ...compactPillButtonSx, color: "#2563eb" }}
-                          >
-                            View all
-                          </Button>
-                        </Stack>
-
-                        <Stack spacing={1.2}>
-                          {recommendedPlaces.slice(0, 2).map((place) => (
-                            <Paper
-                              key={place.id}
-                              component={RouterLink}
-                              to={`/tours/${place.id}`}
-                              elevation={0}
-                              sx={{
-                                p: 1.2,
-                                borderRadius: 3,
-                                border: "1px solid #dbeafe",
-                                textDecoration: "none",
-                                color: "inherit",
-                                display: "block",
-                              }}
-                            >
-                              <Stack
-                                direction={{ xs: "column", sm: "row" }}
-                                spacing={1.5}
-                              >
-                                <Box
-                                  component="img"
-                                  src={place.photo}
-                                  alt={place.title}
-                                  sx={{
-                                    width: { xs: "100%", sm: 120 },
-                                    height: 100,
-                                    objectFit: "cover",
-                                    borderRadius: 2.5,
-                                  }}
-                                />
-                                <Box sx={{ flex: 1 }}>
-                                  <Typography
-                                    fontWeight={700}
-                                    sx={{ color: "#1c1917" }}
-                                  >
-                                    {place.title}
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{ mt: 0.25 }}
-                                  >
-                                    {place.city} • ⭐ {place.avgRating}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    display="block"
-                                    sx={{ mt: 0.5 }}
-                                  >
-                                    Budget-friendly pick for a short escape.
-                                  </Typography>
-                                  <Stack
-                                    direction="row"
-                                    spacing={0.75}
-                                    useFlexGap
-                                    flexWrap="wrap"
-                                    sx={{ mt: 1 }}
-                                  >
-                                    {[place.city, "Culture", "Weekend"].map(
-                                      (tag) => (
-                                        <Chip
-                                          key={`${place.id}-${tag}`}
-                                          label={tag}
-                                          size="small"
-                                          sx={{ bgcolor: "#f7f1eb" }}
-                                        />
-                                      ),
-                                    )}
-                                  </Stack>
-                                </Box>
-                                <Typography
-                                  fontWeight={700}
-                                  sx={{ color: "#2563eb" }}
-                                >
-                                  ${place.price}
-                                </Typography>
-                              </Stack>
-                            </Paper>
-                          ))}
-                        </Stack>
-                      </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} lg={5}>
-                      <Paper elevation={0} sx={sectionCardSx}>
-                        <Stack
-                          direction={{ xs: "column", sm: "row" }}
-                          justifyContent="space-between"
-                          alignItems={{ xs: "flex-start", sm: "center" }}
-                          spacing={1.25}
-                          sx={{ mb: 1.5 }}
-                        >
-                          <Box>
-                            <Typography
-                              variant="h5"
-                              fontWeight={800}
-                              color="#1c1917"
-                            >
-                              Memories Gallery
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Add memories and choose if they stay public or
-                              private.
-                            </Typography>
-                          </Box>
-
+                    <Grid
+                      container
+                      spacing={2.5}
+                      sx={{
+                        "& > .MuiGrid-item": {
+                          pl: { xs: "0 !important", sm: undefined },
+                        },
+                      }}
+                    >
+                      <Grid item xs={12} lg={6}>
+                        <Paper elevation={0} sx={sectionCardSx}>
                           <Stack
                             direction="row"
-                            spacing={0.75}
-                            alignItems="center"
+                            justifyContent="space-between"
+                            alignItems="flex-start"
+                            mb={2}
                           >
-                            <IconButton
-                              component="label"
-                              size="small"
-                              aria-label="Add memory"
-                              sx={{
-                                width: 38,
-                                height: 38,
-                                borderRadius: 2.5,
-                                bgcolor: "#2563eb",
-                                color: "#fff",
-                                border: "1px solid #bfdbfe",
-                                boxShadow: "none",
-                                "&:hover": {
-                                  bgcolor: "#1d4ed8",
-                                  boxShadow: "none",
-                                },
-                              }}
-                            >
-                              <AddRoundedIcon fontSize="small" />
-                              <input
-                                hidden
-                                accept="image/*"
-                                multiple
-                                type="file"
-                                onChange={handleGalleryUpload}
-                              />
-                            </IconButton>
+                            <Box>
+                              <Typography
+                                variant="h5"
+                                fontWeight={800}
+                                color="#1c1917"
+                              >
+                                Upcoming Trip
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                Remember your upcoming trips.
+                              </Typography>
+                            </Box>
                             <Button
                               size="small"
-                              startIcon={
-                                <OpenInFullRoundedIcon fontSize="small" />
+                              component={RouterLink}
+                              to={
+                                featuredPlan
+                                  ? `/tours/${featuredPlan.id}`
+                                  : "/tours"
                               }
-                              onClick={() => setTab(1)}
-                              sx={{
-                                ...compactPillButtonSx,
-                                color: "#2563eb",
-                                border: "1px solid #dbeafe",
-                                bgcolor: "#f8fbff",
-                              }}
+                              sx={{ ...compactPillButtonSx, color: "#2563eb" }}
                             >
-                              Expand
+                              Details
                             </Button>
                           </Stack>
-                        </Stack>
 
-                        <Stack spacing={1.1}>
-                          {memories.length ? (
-                            memories.slice(0, 4).map((memory, index) => (
-                              <Paper
-                                key={memory.id || `memory-card-${index}`}
-                                elevation={0}
-                                sx={{
-                                  p: 1,
-                                  borderRadius: 3,
-                                  border: "1px solid #dbeafe",
-                                  bgcolor:
-                                    memory.visibility === "public"
-                                      ? "#f8fbff"
-                                      : "#f8fafc",
-                                }}
+                          <Grid container spacing={1.5}>
+                            {sideTrips.slice(0, 2).map((trip, index) => (
+                              <Grid
+                                item
+                                xs={12}
+                                sm={6}
+                                key={`${trip.title}-${index}`}
                               >
-                                <Stack
-                                  direction={{ xs: "column", sm: "row" }}
-                                  spacing={1.2}
+                                <Card
+                                  sx={{
+                                    borderRadius: 3,
+                                    boxShadow: "none",
+                                    border: "1px solid #dbeafe",
+                                  }}
                                 >
-                                  <Box
-                                    component="img"
-                                    src={memory.src}
-                                    alt={`Memory ${index + 1}`}
-                                    onClick={() =>
-                                      handleOpenMemoryViewer(memory)
-                                    }
-                                    sx={{
-                                      width: { xs: "100%", sm: 96 },
-                                      height: 96,
-                                      objectFit: "cover",
-                                      borderRadius: 2.5,
-                                      cursor: "pointer",
-                                    }}
-                                  />
-                                  <Box sx={{ flex: 1 }}>
-                                    <Stack
-                                      direction="row"
-                                      justifyContent="space-between"
-                                      alignItems="center"
-                                      sx={{ mb: 0.5 }}
+                                  <CardContent>
+                                    <Box
+                                      component="img"
+                                      src={
+                                        galleryStrip[index] ||
+                                        featuredPlan?.photo
+                                      }
+                                      alt={trip.title}
+                                      sx={{
+                                        width: "100%",
+                                        height: 110,
+                                        objectFit: "cover",
+                                        borderRadius: 2.5,
+                                        mb: 1.25,
+                                      }}
+                                    />
+                                    <Typography
+                                      fontWeight={700}
+                                      sx={{ color: "#1c1917" }}
                                     >
-                                      <Typography
-                                        fontWeight={700}
-                                        sx={{ color: "#1c1917" }}
-                                      >
-                                        {memory.title || `Memory ${index + 1}`}
-                                      </Typography>
-                                      <Chip
-                                        size="small"
-                                        label={
-                                          memory.visibility === "public"
-                                            ? "Public"
-                                            : "Private"
-                                        }
-                                        color={
-                                          memory.visibility === "public"
-                                            ? "primary"
-                                            : "default"
-                                        }
-                                        variant={
-                                          memory.visibility === "public"
-                                            ? "filled"
-                                            : "outlined"
-                                        }
-                                      />
-                                    </Stack>
+                                      {trip.title}
+                                    </Typography>
                                     <Typography
                                       variant="caption"
                                       color="text.secondary"
                                       display="block"
                                     >
-                                      {memory.visibility === "public"
-                                        ? "Visible in your dashboard gallery."
-                                        : "Private memory — not shown in the page gallery."}
+                                      {trip.city || "Travel destination"}
                                     </Typography>
-                                    {memory.tripTitle ? (
-                                      <Typography
-                                        variant="caption"
-                                        sx={{
-                                          color: "#2563eb",
-                                          display: "block",
-                                          mt: 0.35,
-                                        }}
-                                      >
-                                        Trip: {memory.tripTitle}
-                                      </Typography>
-                                    ) : null}
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ color: "#64748b" }}
+                                    >
+                                      {trip.date} • {trip.status}
+                                    </Typography>
+
                                     <Stack
-                                      direction={{ xs: "column", sm: "row" }}
+                                      direction="row"
                                       justifyContent="space-between"
-                                      alignItems={{
-                                        xs: "flex-start",
-                                        sm: "center",
-                                      }}
+                                      alignItems="center"
+                                      sx={{ mt: 1.5 }}
+                                    >
+                                      <Typography
+                                        fontSize="0.82rem"
+                                        fontWeight={700}
+                                      >
+                                        Budget: ${trip.budget || 990}
+                                      </Typography>
+                                      <Stack direction="row" spacing={0.5}>
+                                        <Button
+                                          size="small"
+                                          onClick={() =>
+                                            handleEditCollectionItem(
+                                              "upcomingTrips",
+                                              index,
+                                            )
+                                          }
+                                          sx={{
+                                            ...compactPillButtonSx,
+                                            minWidth: 0,
+                                            px: 1,
+                                          }}
+                                        >
+                                          Edit
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          color="error"
+                                          onClick={() =>
+                                            handleDeleteCollectionItem(
+                                              "upcomingTrips",
+                                              index,
+                                              "Trip removed from your dashboard.",
+                                            )
+                                          }
+                                          sx={{
+                                            ...compactPillButtonSx,
+                                            minWidth: 0,
+                                            px: 1,
+                                          }}
+                                        >
+                                          Delete
+                                        </Button>
+                                      </Stack>
+                                    </Stack>
+                                  </CardContent>
+                                </Card>
+                              </Grid>
+                            ))}
+                          </Grid>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12} lg={6}>
+                        <Paper elevation={0} sx={sectionCardSx}>
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="flex-start"
+                            mb={2}
+                          >
+                            <Box>
+                              <Typography
+                                variant="h5"
+                                fontWeight={800}
+                                color="#1c1917"
+                              >
+                                Travel Snapshot
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                Check in on your next dream locations.
+                              </Typography>
+                            </Box>
+                            <Button
+                              size="small"
+                              component={RouterLink}
+                              to="/tours"
+                              sx={{ ...compactPillButtonSx, color: "#2563eb" }}
+                            >
+                              Expand
+                            </Button>
+                          </Stack>
+
+                          <Stack spacing={1.1} sx={{ mt: 0.5 }}>
+                            {friendTrips.map((trip) => (
+                              <Paper
+                                key={`${trip.name}-${trip.place}`}
+                                elevation={0}
+                                sx={{
+                                  p: 1.1,
+                                  borderRadius: 3,
+                                  border: "1px solid #dbeafe",
+                                  bgcolor: "#f8fbff",
+                                }}
+                              >
+                                <Stack
+                                  direction="row"
+                                  justifyContent="space-between"
+                                  spacing={1}
+                                >
+                                  <Box>
+                                    <Typography
+                                      fontSize="0.88rem"
+                                      fontWeight={700}
+                                      color="#1c1917"
+                                    >
+                                      {trip.name}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                    >
+                                      {trip.note}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ color: "#2563eb" }}
+                                    >
+                                      {trip.place}
+                                    </Typography>
+                                  </Box>
+                                  <Button
+                                    size="small"
+                                    component={RouterLink}
+                                    to={trip.to}
+                                    variant="contained"
+                                    sx={{
+                                      ...compactPillButtonSx,
+                                      alignSelf: "center",
+                                      bgcolor: "#2563eb",
+                                      color: "#fff",
+                                      boxShadow: "none",
+                                      "&:hover": {
+                                        bgcolor: "#1d4ed8",
+                                        boxShadow: "none",
+                                      },
+                                    }}
+                                  >
+                                    Join now
+                                  </Button>
+                                </Stack>
+                              </Paper>
+                            ))}
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    </Grid>
+
+                    <Grid
+                      container
+                      spacing={2.5}
+                      sx={{
+                        "& > .MuiGrid-item": {
+                          pl: { xs: "0 !important", sm: undefined },
+                        },
+                      }}
+                    >
+                      <Grid item xs={12} lg={7}>
+                        <Paper elevation={0} sx={sectionCardSx}>
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="flex-start"
+                            mb={2}
+                          >
+                            <Box>
+                              <Typography
+                                variant="h5"
+                                fontWeight={800}
+                                color="#1c1917"
+                              >
+                                For your next trip
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                These are easy wins you can plan right now.
+                              </Typography>
+                            </Box>
+                            <Button
+                              component={RouterLink}
+                              to="/tours"
+                              size="small"
+                              sx={{ ...compactPillButtonSx, color: "#2563eb" }}
+                            >
+                              View all
+                            </Button>
+                          </Stack>
+
+                          <Stack spacing={1.2}>
+                            {recommendedPlaces.slice(0, 2).map((place) => (
+                              <Paper
+                                key={place.id}
+                                component={RouterLink}
+                                to={`/tours/${place.id}`}
+                                elevation={0}
+                                sx={{
+                                  p: 1.2,
+                                  borderRadius: 3,
+                                  border: "1px solid #dbeafe",
+                                  textDecoration: "none",
+                                  color: "inherit",
+                                  display: "block",
+                                }}
+                              >
+                                <Stack
+                                  direction={{ xs: "column", sm: "row" }}
+                                  spacing={1.5}
+                                >
+                                  <Box
+                                    component="img"
+                                    src={place.photo}
+                                    alt={place.title}
+                                    sx={{
+                                      width: { xs: "100%", sm: 120 },
+                                      height: 100,
+                                      objectFit: "cover",
+                                      borderRadius: 2.5,
+                                    }}
+                                  />
+                                  <Box sx={{ flex: 1 }}>
+                                    <Typography
+                                      fontWeight={700}
+                                      sx={{ color: "#1c1917" }}
+                                    >
+                                      {place.title}
+                                    </Typography>
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                      sx={{ mt: 0.25 }}
+                                    >
+                                      {place.city} • ⭐ {place.avgRating}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      display="block"
+                                      sx={{ mt: 0.5 }}
+                                    >
+                                      Budget-friendly pick for a short escape.
+                                    </Typography>
+                                    <Stack
+                                      direction="row"
                                       spacing={0.75}
                                       useFlexGap
                                       flexWrap="wrap"
                                       sx={{ mt: 1 }}
                                     >
-                                      <Stack
-                                        direction="row"
-                                        spacing={0.35}
-                                        alignItems="center"
-                                      >
-                                        <LockOutlinedIcon
-                                          sx={{
-                                            fontSize: 16,
-                                            color:
-                                              memory.visibility === "public"
-                                                ? "#94a3b8"
-                                                : "#2563eb",
-                                          }}
-                                        />
-                                        <Switch
-                                          size="small"
-                                          checked={
-                                            memory.visibility === "public"
-                                          }
-                                          onChange={() =>
-                                            handleToggleMemoryVisibility(index)
-                                          }
-                                          inputProps={{
-                                            "aria-label": `Toggle memory ${index + 1} visibility`,
-                                          }}
-                                        />
-                                        <PublicRoundedIcon
-                                          sx={{
-                                            fontSize: 16,
-                                            color:
-                                              memory.visibility === "public"
-                                                ? "#2563eb"
-                                                : "#94a3b8",
-                                          }}
-                                        />
-                                      </Stack>
-                                      <Stack direction="row" spacing={0.5}>
-                                        <IconButton
-                                          size="small"
-                                          aria-label={`View memory ${index + 1}`}
-                                          onClick={() =>
-                                            handleOpenMemoryViewer(memory)
-                                          }
-                                          sx={{
-                                            borderRadius: 2,
-                                            border: "1px solid #dbeafe",
-                                            color: "#2563eb",
-                                          }}
-                                        >
-                                          <VisibilityOutlinedIcon fontSize="small" />
-                                        </IconButton>
-                                        <IconButton
-                                          size="small"
-                                          aria-label={`Edit memory ${index + 1}`}
-                                          onClick={() =>
-                                            handleRenameMemory(index)
-                                          }
-                                          sx={{
-                                            borderRadius: 2,
-                                            border: "1px solid #dbeafe",
-                                            color: "#2563eb",
-                                          }}
-                                        >
-                                          <EditIcon fontSize="small" />
-                                        </IconButton>
-                                        <IconButton
-                                          size="small"
-                                          aria-label={`Delete memory ${index + 1}`}
-                                          onClick={() =>
-                                            handleDeleteCollectionItem(
-                                              "gallery",
-                                              index,
-                                              "Memory removed from your gallery.",
-                                            )
-                                          }
-                                          sx={{
-                                            borderRadius: 2,
-                                            border: "1px solid #fecaca",
-                                            color: "#dc2626",
-                                          }}
-                                        >
-                                          <DeleteOutlineIcon fontSize="small" />
-                                        </IconButton>
-                                      </Stack>
+                                      {[place.city, "Culture", "Weekend"].map(
+                                        (tag) => (
+                                          <Chip
+                                            key={`${place.id}-${tag}`}
+                                            label={tag}
+                                            size="small"
+                                            sx={{ bgcolor: "#f7f1eb" }}
+                                          />
+                                        ),
+                                      )}
                                     </Stack>
                                   </Box>
+                                  <Typography
+                                    fontWeight={700}
+                                    sx={{ color: "#2563eb" }}
+                                  >
+                                    ${place.price}
+                                  </Typography>
                                 </Stack>
                               </Paper>
-                            ))
-                          ) : (
-                            <Paper
-                              elevation={0}
-                              sx={{
-                                p: 2,
-                                borderRadius: 3,
-                                bgcolor: "#f8fbff",
-                                border: "1px dashed #bfdbfe",
-                              }}
-                            >
+                            ))}
+                          </Stack>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12} lg={5}>
+                        <Paper elevation={0} sx={sectionCardSx}>
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            justifyContent="space-between"
+                            alignItems={{ xs: "flex-start", sm: "center" }}
+                            spacing={1.25}
+                            sx={{ mb: 1.5 }}
+                          >
+                            <Box>
                               <Typography
-                                fontWeight={700}
-                                sx={{ color: "#1c1917" }}
+                                variant="h5"
+                                fontWeight={800}
+                                color="#1c1917"
                               >
-                                No memories yet
+                                Memories Gallery
                               </Typography>
                               <Typography
                                 variant="body2"
                                 color="text.secondary"
-                                sx={{ mt: 0.5 }}
                               >
-                                Upload your favorite moments here. Keep them
-                                private or share them publicly later.
+                                Add memories and choose if they stay public or
+                                private.
                               </Typography>
-                            </Paper>
-                          )}
-                        </Stack>
-                      </Paper>
+                            </Box>
+
+                            <Stack
+                              direction="row"
+                              spacing={0.75}
+                              alignItems="center"
+                            >
+                              <IconButton
+                                component="label"
+                                size="small"
+                                aria-label="Add memory"
+                                sx={{
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: 2.5,
+                                  bgcolor: "#2563eb",
+                                  color: "#fff",
+                                  border: "1px solid #bfdbfe",
+                                  boxShadow: "none",
+                                  "&:hover": {
+                                    bgcolor: "#1d4ed8",
+                                    boxShadow: "none",
+                                  },
+                                }}
+                              >
+                                <AddRoundedIcon fontSize="small" />
+                                <input
+                                  hidden
+                                  accept="image/*"
+                                  multiple
+                                  type="file"
+                                  onChange={handleGalleryUpload}
+                                />
+                              </IconButton>
+                              <Button
+                                size="small"
+                                startIcon={
+                                  <OpenInFullRoundedIcon fontSize="small" />
+                                }
+                                onClick={() => setTab(1)}
+                                sx={{
+                                  ...compactPillButtonSx,
+                                  color: "#2563eb",
+                                  border: "1px solid #dbeafe",
+                                  bgcolor: "#f8fbff",
+                                }}
+                              >
+                                Expand
+                              </Button>
+                            </Stack>
+                          </Stack>
+
+                          <Stack spacing={1.1}>
+                            {memories.length ? (
+                              memories.slice(0, 4).map((memory, index) => (
+                                <Paper
+                                  key={memory.id || `memory-card-${index}`}
+                                  elevation={0}
+                                  sx={{
+                                    p: 1,
+                                    borderRadius: 3,
+                                    border: "1px solid #dbeafe",
+                                    bgcolor:
+                                      memory.visibility === "public"
+                                        ? "#f8fbff"
+                                        : "#f8fafc",
+                                  }}
+                                >
+                                  <Stack
+                                    direction={{ xs: "column", sm: "row" }}
+                                    spacing={1.2}
+                                  >
+                                    <Box
+                                      component="img"
+                                      src={memory.src}
+                                      alt={`Memory ${index + 1}`}
+                                      onClick={() =>
+                                        handleOpenMemoryViewer(memory)
+                                      }
+                                      sx={{
+                                        width: { xs: "100%", sm: 96 },
+                                        height: 96,
+                                        objectFit: "cover",
+                                        borderRadius: 2.5,
+                                        cursor: "pointer",
+                                      }}
+                                    />
+                                    <Box sx={{ flex: 1 }}>
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                        sx={{ mb: 0.5 }}
+                                      >
+                                        <Typography
+                                          fontWeight={700}
+                                          sx={{ color: "#1c1917" }}
+                                        >
+                                          {memory.title ||
+                                            `Memory ${index + 1}`}
+                                        </Typography>
+                                        <Chip
+                                          size="small"
+                                          label={
+                                            memory.visibility === "public"
+                                              ? "Public"
+                                              : "Private"
+                                          }
+                                          color={
+                                            memory.visibility === "public"
+                                              ? "primary"
+                                              : "default"
+                                          }
+                                          variant={
+                                            memory.visibility === "public"
+                                              ? "filled"
+                                              : "outlined"
+                                          }
+                                        />
+                                      </Stack>
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                        display="block"
+                                      >
+                                        {memory.visibility === "public"
+                                          ? "Visible in your dashboard gallery."
+                                          : "Private memory — not shown in the page gallery."}
+                                      </Typography>
+                                      {memory.tripTitle ? (
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            color: "#2563eb",
+                                            display: "block",
+                                            mt: 0.35,
+                                          }}
+                                        >
+                                          Trip: {memory.tripTitle}
+                                        </Typography>
+                                      ) : null}
+                                      <Stack
+                                        direction={{ xs: "column", sm: "row" }}
+                                        justifyContent="space-between"
+                                        alignItems={{
+                                          xs: "flex-start",
+                                          sm: "center",
+                                        }}
+                                        spacing={0.75}
+                                        useFlexGap
+                                        flexWrap="wrap"
+                                        sx={{ mt: 1 }}
+                                      >
+                                        <Stack
+                                          direction="row"
+                                          spacing={0.35}
+                                          alignItems="center"
+                                        >
+                                          <LockOutlinedIcon
+                                            sx={{
+                                              fontSize: 16,
+                                              color:
+                                                memory.visibility === "public"
+                                                  ? "#94a3b8"
+                                                  : "#2563eb",
+                                            }}
+                                          />
+                                          <Switch
+                                            size="small"
+                                            checked={
+                                              memory.visibility === "public"
+                                            }
+                                            onChange={() =>
+                                              handleToggleMemoryVisibility(
+                                                index,
+                                              )
+                                            }
+                                            inputProps={{
+                                              "aria-label": `Toggle memory ${index + 1} visibility`,
+                                            }}
+                                          />
+                                          <PublicRoundedIcon
+                                            sx={{
+                                              fontSize: 16,
+                                              color:
+                                                memory.visibility === "public"
+                                                  ? "#2563eb"
+                                                  : "#94a3b8",
+                                            }}
+                                          />
+                                        </Stack>
+                                        <Stack direction="row" spacing={0.5}>
+                                          <IconButton
+                                            size="small"
+                                            aria-label={`View memory ${index + 1}`}
+                                            onClick={() =>
+                                              handleOpenMemoryViewer(memory)
+                                            }
+                                            sx={{
+                                              borderRadius: 2,
+                                              border: "1px solid #dbeafe",
+                                              color: "#2563eb",
+                                            }}
+                                          >
+                                            <VisibilityOutlinedIcon fontSize="small" />
+                                          </IconButton>
+                                          <IconButton
+                                            size="small"
+                                            aria-label={`Edit memory ${index + 1}`}
+                                            onClick={() =>
+                                              handleRenameMemory(index)
+                                            }
+                                            sx={{
+                                              borderRadius: 2,
+                                              border: "1px solid #dbeafe",
+                                              color: "#2563eb",
+                                            }}
+                                          >
+                                            <EditIcon fontSize="small" />
+                                          </IconButton>
+                                          <IconButton
+                                            size="small"
+                                            aria-label={`Delete memory ${index + 1}`}
+                                            onClick={() =>
+                                              handleDeleteCollectionItem(
+                                                "gallery",
+                                                index,
+                                                "Memory removed from your gallery.",
+                                              )
+                                            }
+                                            sx={{
+                                              borderRadius: 2,
+                                              border: "1px solid #fecaca",
+                                              color: "#dc2626",
+                                            }}
+                                          >
+                                            <DeleteOutlineIcon fontSize="small" />
+                                          </IconButton>
+                                        </Stack>
+                                      </Stack>
+                                    </Box>
+                                  </Stack>
+                                </Paper>
+                              ))
+                            ) : (
+                              <Paper
+                                elevation={0}
+                                sx={{
+                                  p: 2,
+                                  borderRadius: 3,
+                                  bgcolor: "#f8fbff",
+                                  border: "1px dashed #bfdbfe",
+                                }}
+                              >
+                                <Typography
+                                  fontWeight={700}
+                                  sx={{ color: "#1c1917" }}
+                                >
+                                  No memories yet
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ mt: 0.5 }}
+                                >
+                                  Upload your favorite moments here. Keep them
+                                  private or share them publicly later.
+                                </Typography>
+                              </Paper>
+                            )}
+                          </Stack>
+                        </Paper>
+                      </Grid>
                     </Grid>
-                  </Grid>
-                </>
-              )}
+                  </>
+                )}
             </Stack>
           </Grid>
         </Grid>

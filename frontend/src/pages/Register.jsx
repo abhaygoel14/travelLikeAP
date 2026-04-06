@@ -206,6 +206,18 @@ const Register = () => {
     }
   };
 
+  const resolveProfilePhotoUrl = (firebaseUser, uploadedPhotoURL = "") => {
+    const providerPhotoURL = Array.isArray(firebaseUser?.providerData)
+      ? firebaseUser.providerData
+          .map((item) => String(item?.photoURL || "").trim())
+          .find(Boolean) || ""
+      : "";
+
+    return String(
+      uploadedPhotoURL || firebaseUser?.photoURL || providerPhotoURL || "",
+    ).trim();
+  };
+
   const savePasswordForExistingGoogleAccount = async (nextCredentials) => {
     const shouldContinue = window.confirm(
       "This email already exists with Google. Do you want to save the password you entered for future login?",
@@ -258,11 +270,15 @@ const Register = () => {
       const resolvedDisplayName =
         displayName || result.user.displayName || "Traveler";
       const uploadedPhotoURL = await uploadProfilePhoto(result.user.uid);
+      const resolvedProfilePhotoURL = resolveProfilePhotoUrl(
+        result.user,
+        uploadedPhotoURL,
+      );
 
       await updateProfile(result.user, {
         displayName: resolvedDisplayName,
-        photoURL: /^https?:\/\//i.test(String(uploadedPhotoURL || ""))
-          ? uploadedPhotoURL
+        photoURL: /^https?:\/\//i.test(String(resolvedProfilePhotoURL || ""))
+          ? resolvedProfilePhotoURL
           : result.user.photoURL || null,
       });
 
@@ -274,7 +290,9 @@ const Register = () => {
         displayName: resolvedDisplayName,
         email: result.user.email || nextCredentials.email,
         emailVerified: result.user.emailVerified,
-        photoURL: uploadedPhotoURL || result.user.photoURL || "",
+        photoURL: resolvedProfilePhotoURL,
+        profileUrl: resolvedProfilePhotoURL,
+        imageUrl: result.user.photoURL || resolvedProfilePhotoURL || "",
         role: "user",
         provider: "google.com,password",
         hasPassword: true,
@@ -394,11 +412,15 @@ const Register = () => {
       const uploadedPhotoURL = await uploadProfilePhoto(
         userCredential.user.uid,
       );
+      const resolvedProfilePhotoURL = resolveProfilePhotoUrl(
+        userCredential.user,
+        uploadedPhotoURL,
+      );
 
       await updateProfile(userCredential.user, {
         displayName,
-        photoURL: /^https?:\/\//i.test(String(uploadedPhotoURL || ""))
-          ? uploadedPhotoURL
+        photoURL: /^https?:\/\//i.test(String(resolvedProfilePhotoURL || ""))
+          ? resolvedProfilePhotoURL
           : null,
       });
 
@@ -421,7 +443,9 @@ const Register = () => {
         displayName,
         email: userCredential.user.email,
         emailVerified: userCredential.user.emailVerified,
-        photoURL: uploadedPhotoURL || "",
+        photoURL: resolvedProfilePhotoURL,
+        profileUrl: resolvedProfilePhotoURL,
+        imageUrl: resolvedProfilePhotoURL,
         role: "user",
         provider: "password",
         hasPassword: true,

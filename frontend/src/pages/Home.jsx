@@ -1,8 +1,11 @@
 import React, { useEffect } from "react";
 import "../styles/home.css";
 import { Container, Row, Col } from "reactstrap";
-import heroImg from "../assets/images/hero-img01.jpg";
-import heroImg02 from "../assets/images/hero-img02.jpg";
+import heroVideo01 from "../assets/images/hero-video01.mp4";
+import heroImg01 from "../assets/images/hero-image01.jpg";
+import heroVideo03 from "../assets/images/hero-video03.mp4";
+import heroImg04 from "../assets/images/hero-img04.jpg";
+import heroImg03 from "../assets/images/hero-img03.jpg";
 import heroVideo from "../assets/images/hero-video.mp4";
 import worldImg from "../assets/images/world.png";
 import experienceImg from "../assets/images/experience.png";
@@ -53,7 +56,16 @@ const Home = () => {
 
             <Col lg="2">
               <div className="hero__img-box">
-                <MediaWithShimmer src={heroImg} alt="Travel preview" />
+                <MediaWithShimmer
+                  as="video"
+                  src={heroVideo01}
+                  poster={heroImg01}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                />
               </div>
             </Col>
             <Col lg="2">
@@ -61,8 +73,9 @@ const Home = () => {
                 <MediaWithShimmer
                   as="video"
                   src={heroVideo}
-                  poster={heroImg02}
-                  controls
+                  poster={heroImg03}
+                  autoPlay
+                  loop
                   muted
                   playsInline
                   preload="auto"
@@ -71,7 +84,16 @@ const Home = () => {
             </Col>
             <Col lg="2">
               <div className="hero__img-box mt-5">
-                <MediaWithShimmer src={heroImg02} alt="Travel memory" />
+                <MediaWithShimmer
+                  as="video"
+                  src={heroVideo03}
+                  poster={heroImg04}
+                  autoPlay
+                  loop
+                  playsInline
+                  preload="auto"
+                  controls
+                />
               </div>
             </Col>
 
