@@ -51,6 +51,7 @@ import { AuthContext } from "../context/AuthContext";
 import toursData from "../assets/data/tours";
 import galleryImages from "../components/Image-gallery/galleryImage";
 import ReceiptPanel from "../components/UserDashboard/ReceiptPanel";
+import { TravelCardSkeletons } from "../shared/TravelLoader";
 import Logo from "../assets/images/logo.png";
 import { auth, realtimeDb, storage } from "../utils/firebaseConfig";
 
@@ -536,6 +537,7 @@ const UserDashboard = () => {
     visibility: "private",
   });
   const [viewingMemory, setViewingMemory] = useState(null);
+  const [tabLoading, setTabLoading] = useState(true);
   const showNotifications = Boolean(notificationAnchorEl);
   const isGalleryView = tab === 1;
   const isItineraryView = tab === 2;
@@ -556,6 +558,16 @@ const UserDashboard = () => {
 
     return () => window.clearTimeout(timer);
   }, [status.message]);
+
+  useEffect(() => {
+    setTabLoading(true);
+
+    const timer = window.setTimeout(() => {
+      setTabLoading(false);
+    }, 220);
+
+    return () => window.clearTimeout(timer);
+  }, [tab]);
 
   useEffect(() => {
     const nextProfile = normalizeProfile(user || {});
@@ -2475,7 +2487,13 @@ const UserDashboard = () => {
                 </Box>
               </Paper>
 
-              {isItineraryView && (
+              {tabLoading && (
+                <Paper elevation={0} sx={sectionCardSx}>
+                  <TravelCardSkeletons count={tab === 1 ? 6 : 4} />
+                </Paper>
+              )}
+
+              {!tabLoading && isItineraryView && (
                 <Paper
                   elevation={0}
                   sx={{
@@ -2638,7 +2656,7 @@ const UserDashboard = () => {
                 </Paper>
               )}
 
-              {isReceiptView && (
+              {!tabLoading && isReceiptView && (
                 <Paper elevation={0} sx={sectionCardSx}>
                   <ReceiptPanel
                     trips={itineraryTrips}
@@ -2650,7 +2668,7 @@ const UserDashboard = () => {
                 </Paper>
               )}
 
-              {isGalleryView && (
+              {!tabLoading && isGalleryView && (
                 <Paper elevation={0} sx={sectionCardSx}>
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
@@ -2882,7 +2900,7 @@ const UserDashboard = () => {
                 </Paper>
               )}
 
-              {!isGalleryView && !isItineraryView && !isReceiptView && (
+              {!tabLoading && !isGalleryView && !isItineraryView && !isReceiptView && (
                 <>
                   {isEditingProfile && (
                     <Paper elevation={0} sx={sectionCardSx}>

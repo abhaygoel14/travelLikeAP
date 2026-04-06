@@ -14,6 +14,7 @@ import FeaturedTourList from "../components/Featured-tours/FeaturedTourList";
 import MasonryImagesGallery from "../components/Image-gallery/MasonryImagesGallery";
 import Testimonials from "../components/Testimonial/Testimonials";
 import NewsLetter from "../shared/Newsletter";
+import { MediaWithShimmer } from "../shared/TravelLoader";
 
 const Home = () => {
   useEffect(() => {
@@ -52,17 +53,24 @@ const Home = () => {
 
             <Col lg="2">
               <div className="hero__img-box">
-                <img src={heroImg} alt="" />
+                <MediaWithShimmer src={heroImg} alt="Travel preview" />
               </div>
             </Col>
             <Col lg="2">
               <div className="hero__img-box hero__video-box mt-4">
-                <video src={heroVideo} alt="" controls />
+                <MediaWithShimmer
+                  as="video"
+                  src={heroVideo}
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
               </div>
             </Col>
             <Col lg="2">
               <div className="hero__img-box mt-5">
-                <img src={heroImg02} alt="" />
+                <MediaWithShimmer src={heroImg02} alt="Travel memory" />
               </div>
             </Col>
 
@@ -132,7 +140,7 @@ const Home = () => {
             </Col>
             <Col lg="6">
               <div className="experience__img">
-                <img src={experienceImg} alt="" />
+                <MediaWithShimmer src={experienceImg} alt="Travel experience" />
               </div>
             </Col>
           </Row>
@@ -151,7 +159,9 @@ const Home = () => {
               </h2>
             </Col>
             <Col lg="12">
-              <MasonryImagesGallery />
+              <div className="gallery__wrapper">
+                <MasonryImagesGallery />
+              </div>
             </Col>
           </Row>
         </Container>
@@ -167,7 +177,9 @@ const Home = () => {
               <h2 className="testimonial__title">What our fans say about us</h2>
             </Col>
             <Col lg="12">
-              <Testimonials />
+              <div className="testimonial__wrapper">
+                <Testimonials />
+              </div>
             </Col>
           </Row>
         </Container>

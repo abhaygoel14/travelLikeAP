@@ -6,11 +6,10 @@ import userPlaceholder from "../../assets/images/user.png";
 import "./header.css";
 import { AuthContext } from "../../context/AuthContext";
 
-const nav__links = [
+const baseNavLinks = [
   { path: "/home", display: "Home" },
   { path: "/about", display: "About" },
   { path: "/tours", display: "Tours" },
-  { path: "/users", display: "Users" },
 ];
 
 const Header = () => {
@@ -18,6 +17,14 @@ const Header = () => {
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const { user, dispatch } = useContext(AuthContext);
+
+  const navLinks = useMemo(
+    () =>
+      user
+        ? [...baseNavLinks, { path: "/users", display: "Traveller" }]
+        : baseNavLinks,
+    [user],
+  );
 
   const firstName = useMemo(() => {
     const source =
@@ -59,12 +66,12 @@ const Header = () => {
           <div className="nav__wrapper d-flex align-items-center justify-content-between">
             <Link to="/home" className="logo">
               <img src={Logo} alt="logo" />
-              <span className="brand-text">Travel like AP</span>
+              <span className="brand-text">Travel Like AP</span>
             </Link>
 
             <div className="navigation" ref={menuRef} onClick={toggleMenu}>
               <ul className="menu d-flex align-items-center gap-5">
-                {nav__links.map((item, index) => (
+                {navLinks.map((item, index) => (
                   <li className="nav__item" key={index}>
                     <NavLink
                       to={item.path}

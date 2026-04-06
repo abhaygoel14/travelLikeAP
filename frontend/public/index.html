@@ -1,21 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
+
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="description"
+    content="Travel Like AP helps travellers discover tours, plan trips, save memories, and explore unforgettable destinations with ease." />
+  <meta name="keywords"
+    content="travel like ap, travel planner, tours, trip booking, holiday packages, travel itinerary, traveller dashboard" />
+  <meta name="author" content="Travel Like AP" />
+  <meta name="robots" content="index, follow" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Travel Like AP" />
+  <meta property="og:title" content="Travel Like AP | Tours, Trips & Travel Planner" />
+  <meta property="og:description"
+    content="Explore tours, organize itineraries, and manage your travel memories with Travel Like AP." />
+  <meta property="og:image" content="%PUBLIC_URL%/logo192.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Travel Like AP | Tours, Trips & Travel Planner" />
+  <meta name="twitter:description"
+    content="Discover tours, plan better trips, and save memories with Travel Like AP." />
+  <meta name="twitter:image" content="%PUBLIC_URL%/logo192.png" />
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+  <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
       Only files inside the `public` folder can be referenced from the HTML.
@@ -24,12 +38,23 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>Travel Booking</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
+  <title>Travel Like AP | Tours, Trips & Travel Planner</title>
+  <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TravelAgency",
+        "name": "Travel Like AP",
+        "url": "%PUBLIC_URL%/",
+        "logo": "%PUBLIC_URL%/logo192.png",
+        "description": "Travel Like AP helps travellers discover tours, plan itineraries, and manage travel memories in one place."
+      }
+    </script>
+</head>
+
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+  <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
 
@@ -39,7 +64,8 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
-    <!-- reCAPTCHA Script for Firebase Phone Authentication -->
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-  </body>
+  <!-- reCAPTCHA Script for Firebase Phone Authentication -->
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</body>
+
 </html>

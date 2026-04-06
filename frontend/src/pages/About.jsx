@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./about.css";
+import { MediaWithShimmer } from "../shared/TravelLoader";
 import img1 from "../assets/images/hero-img01.jpg";
 import img2 from "../assets/images/gallery-03.jpg";
 import img3 from "../assets/images/tour.jpg";
@@ -16,7 +17,7 @@ function StorySection({ title, text, img, reverse = false }) {
       transition={{ duration: 0.7, ease: "easeOut" }}
     >
       <div className="story-image">
-        <img src={img} alt={title} />
+        <MediaWithShimmer src={img} alt={title} />
       </div>
       <div className="story-text">
         <h2>{title}</h2>
