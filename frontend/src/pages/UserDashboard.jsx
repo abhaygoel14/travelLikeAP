@@ -29,7 +29,7 @@ import CreditCardIcon from "@mui/icons-material/CreditCard";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import SaveIcon from "@mui/icons-material/Save";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+// import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -827,7 +827,7 @@ const UserDashboard = () => {
         label: "Guide",
         icon: <CollectionsIcon fontSize="small" />,
         to: "/about",
-      }
+      },
       // {
       //   label: "Friends",
       //   icon: <FavoriteBorderIcon fontSize="small" />,
