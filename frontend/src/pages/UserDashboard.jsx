@@ -828,11 +828,11 @@ const UserDashboard = () => {
         icon: <CollectionsIcon fontSize="small" />,
         to: "/about",
       },
-      {
-        label: "Friends",
-        icon: <FavoriteBorderIcon fontSize="small" />,
-        to: "/users",
-      },
+      // {
+      //   label: "Friends",
+      //   icon: <FavoriteBorderIcon fontSize="small" />,
+      //   to: "/users",
+      // },
     ],
     [],
   );
