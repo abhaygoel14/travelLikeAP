@@ -53,6 +53,7 @@ import galleryImages from "../components/Image-gallery/galleryImage";
 import ReceiptPanel from "../components/UserDashboard/ReceiptPanel";
 import { TravellerDashboardSkeleton } from "../shared/TravelLoader";
 import Logo from "../assets/images/logo.png";
+import { FEATURE_FLAGS } from "../config/featureFlags";
 import { auth, realtimeDb, storage } from "../utils/firebaseConfig";
 
 const defaultTrips = [
@@ -150,15 +151,17 @@ const sectionCardSx = {
 };
 
 const mobileScrollableRowSx = {
-  display: { xs: "flex", md: "grid" },
-  flexWrap: "nowrap",
+  display: "flex",
+  flexWrap: { xs: "nowrap", md: "wrap" },
   gap: { xs: 1.25, md: 0 },
   overflowX: { xs: "auto", md: "visible" },
+  overflowY: "visible",
   scrollSnapType: { xs: "x mandatory", md: "none" },
   pb: { xs: 0.5, md: 0 },
   pr: { xs: 1.5, sm: 0, md: 0 },
   pl: { xs: 0, md: 0 },
   mx: 0,
+  width: "100%",
   "&::-webkit-scrollbar": {
     height: 6,
   },
@@ -168,8 +171,60 @@ const mobileScrollableRowSx = {
   },
   "& > .MuiGrid-item": {
     minWidth: { xs: "82%", sm: "66%", md: "auto" },
+    maxWidth: { xs: "82%", sm: "66%", md: "none" },
     scrollSnapAlign: { xs: "start", md: "unset" },
     pl: { xs: "0 !important", md: undefined },
+  },
+};
+
+const dashboardSectionGridSx = {
+  alignItems: "stretch",
+  "& > .MuiGrid-item": {
+    display: "flex",
+    pl: { xs: "0 !important", sm: undefined },
+  },
+};
+
+const compactTripCardSx = {
+  height: "100%",
+  width: "100%",
+  borderRadius: 3.5,
+  boxShadow: "0 18px 36px rgba(37, 99, 235, 0.08)",
+  border: "1px solid #dbeafe",
+  overflow: "hidden",
+  display: "flex",
+  flexDirection: "column",
+  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  "&:hover": {
+    transform: "translateY(-2px)",
+    boxShadow: "0 24px 44px rgba(37, 99, 235, 0.12)",
+  },
+};
+
+const instagramGalleryGridSx = {
+  columnCount: { xs: 2, sm: 3, md: 4 },
+  columnGap: "6px",
+  bgcolor: "#ffffff",
+  borderRadius: 4,
+  overflow: "hidden",
+  p: "6px",
+  border: "1px solid #e2e8f0",
+};
+
+const instagramMemoryCardSx = {
+  position: "relative",
+  width: "100%",
+  mb: "6px",
+  borderRadius: 0,
+  overflow: "hidden",
+  display: "block",
+  breakInside: "avoid",
+  bgcolor: "#ffffff",
+  cursor: "default",
+  isolation: "isolate",
+  border: "1px solid #e5e7eb",
+  "& .memory-image": {
+    display: "block",
   },
 };
 
@@ -545,7 +600,9 @@ const UserDashboard = () => {
   const [viewingMemory, setViewingMemory] = useState(null);
   const [tabLoading, setTabLoading] = useState(true);
   const showNotifications = Boolean(notificationAnchorEl);
-  const isGalleryView = tab === 1;
+  const memoryGalleryEnabled = FEATURE_FLAGS.memoryGallery;
+  const travelSnapshotEnabled = FEATURE_FLAGS.travelSnapshotCard;
+  const isGalleryView = memoryGalleryEnabled && tab === 1;
   const isItineraryView = tab === 2;
   const isReceiptView = tab === 3;
 
@@ -574,6 +631,12 @@ const UserDashboard = () => {
 
     return () => window.clearTimeout(timer);
   }, [tab]);
+
+  useEffect(() => {
+    if (!memoryGalleryEnabled && tab === 1) {
+      setTab(0);
+    }
+  }, [memoryGalleryEnabled, tab]);
 
   useEffect(() => {
     const nextProfile = normalizeProfile(user || {});
@@ -727,12 +790,16 @@ const UserDashboard = () => {
         to: "/dashboard",
         tabValue: 0,
       },
-      {
-        label: "Gallery",
-        icon: <CollectionsIcon fontSize="small" />,
-        to: "/dashboard",
-        tabValue: 1,
-      },
+      ...(memoryGalleryEnabled
+        ? [
+            {
+              label: "Gallery",
+              icon: <CollectionsIcon fontSize="small" />,
+              to: "/dashboard",
+              tabValue: 1,
+            },
+          ]
+        : []),
       {
         label: "Itinerary",
         icon: <FlightTakeoffIcon fontSize="small" />,
@@ -746,7 +813,7 @@ const UserDashboard = () => {
         tabValue: 3,
       },
     ],
-    [],
+    [memoryGalleryEnabled],
   );
 
   const discoverItems = useMemo(
@@ -1816,61 +1883,6 @@ const UserDashboard = () => {
                 >
                   {isEditingProfile ? "Close editor" : "+ Edit profile"}
                 </Button>
-
-                <Box>
-                  <Typography
-                    variant="overline"
-                    sx={{ color: "#64748b", letterSpacing: ".08em" }}
-                  >
-                    Upcoming Trips
-                  </Typography>
-                  <Stack spacing={1}>
-                    {sideTrips.map((trip, index) => (
-                      <Paper
-                        key={`${trip.title}-${index}`}
-                        component={RouterLink}
-                        to={itineraryTrips[index]?.route || "/tours"}
-                        elevation={0}
-                        sx={{
-                          p: 1.2,
-                          borderRadius: 3,
-                          bgcolor: "#fff",
-                          textDecoration: "none",
-                          color: "inherit",
-                          display: "block",
-                          border: "1px solid transparent",
-                          transition: "all 0.2s ease",
-                          "&:hover": {
-                            borderColor: "#bfdbfe",
-                            transform: "translateY(-1px)",
-                          },
-                        }}
-                      >
-                        <Typography fontSize="0.92rem" fontWeight={700}>
-                          {trip.title}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          display="block"
-                        >
-                          {trip.city || "Travel destination"}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: "#64748b" }}>
-                          {trip.date}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          display="block"
-                          sx={{ color: "#2563eb", mt: 0.4 }}
-                        >
-                          View details
-                        </Typography>
-                      </Paper>
-                    ))}
-                  </Stack>
-                </Box>
-
                 <Box>
                   <Typography
                     variant="overline"
@@ -2451,7 +2463,7 @@ const UserDashboard = () => {
                           maxHeight: "75vh",
                           objectFit: "contain",
                           display: "block",
-                          bgcolor: "#0f172a",
+                          bgcolor: "#ffffff",
                         }}
                       />
                     ) : null}
@@ -2564,28 +2576,21 @@ const UserDashboard = () => {
                         key={`${trip.title}-${index}-itinerary`}
                         sx={{ display: "flex" }}
                       >
-                        <Card
-                          sx={{
-                            height: "100%",
-                            width: "100%",
-                            borderRadius: 3,
-                            boxShadow: "none",
-                            border: "1px solid #dbeafe",
-                            overflow: "hidden",
-                          }}
-                        >
+                        <Card sx={compactTripCardSx}>
                           <Box
                             component="img"
                             src={trip.photo}
                             alt={trip.title}
                             sx={{
                               width: "100%",
-                              height: 180,
+                              height: { xs: 170, md: 156 },
                               objectFit: "cover",
                               bgcolor: "#dbeafe",
                             }}
                           />
-                          <CardContent>
+                          <CardContent
+                            sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}
+                          >
                             <Stack
                               direction="row"
                               justifyContent="space-between"
@@ -2745,182 +2750,209 @@ const UserDashboard = () => {
                     </Stack>
                   </Stack>
 
-                  <Grid container spacing={{ xs: 1.5, md: 2 }}>
+                  <Box sx={instagramGalleryGridSx}>
                     {memories.length ? (
-                      memories.map((memory, index) => (
-                        <Grid
-                          item
-                          xs={12}
-                          sm={6}
-                          md={4}
-                          key={memory.id || `gallery-view-${index}`}
-                        >
-                          <Card
-                            sx={{
-                              height: "100%",
-                              borderRadius: 3,
-                              boxShadow: "none",
-                              border: "1px solid #dbeafe",
-                              overflow: "hidden",
-                            }}
+                      memories.map((memory, index) => {
+                        const desktopHeights = [320, 430, 360, 300, 250, 340];
+                        const mobileHeights = [180, 240, 210, 190];
+
+                        return (
+                          <Box
+                            key={memory.id || `gallery-view-${index}`}
+                            sx={instagramMemoryCardSx}
                           >
                             <Box
                               component="img"
                               src={memory.src}
-                              alt={`Memory ${index + 1}`}
+                              alt={memory.title || `Memory ${index + 1}`}
+                              className="memory-image"
                               onClick={() => handleOpenMemoryViewer(memory)}
                               sx={{
                                 width: "100%",
-                                height: { xs: 180, md: 220 },
+                                height: {
+                                  xs: mobileHeights[
+                                    index % mobileHeights.length
+                                  ],
+                                  md: desktopHeights[
+                                    index % desktopHeights.length
+                                  ],
+                                },
                                 objectFit: "cover",
                                 cursor: "pointer",
+                                transition: "transform 0.35s ease",
+                                "&:hover": {
+                                  transform: "scale(1.03)",
+                                },
                               }}
                             />
-                            <CardContent>
+
+                            <Stack
+                              direction="row"
+                              justifyContent="space-between"
+                              alignItems="flex-start"
+                              sx={{
+                                position: "absolute",
+                                top: 10,
+                                left: 10,
+                                right: 10,
+                                zIndex: 1,
+                              }}
+                            >
+                              <Chip
+                                size="small"
+                                label={
+                                  memory.tripTitle || `Memory ${index + 1}`
+                                }
+                                sx={{
+                                  maxWidth: 150,
+                                  bgcolor: "rgba(15, 23, 42, 0.62)",
+                                  color: "#fff",
+                                  backdropFilter: "blur(6px)",
+                                  "& .MuiChip-label": {
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  },
+                                }}
+                              />
+                              <IconButton
+                                size="small"
+                                aria-label={`Toggle memory ${index + 1} visibility`}
+                                onClick={() =>
+                                  handleToggleMemoryVisibility(index)
+                                }
+                                sx={{
+                                  width: 30,
+                                  height: 30,
+                                  bgcolor: "rgba(255,255,255,0.9)",
+                                  color:
+                                    memory.visibility === "public"
+                                      ? "#2563eb"
+                                      : "#334155",
+                                  "&:hover": {
+                                    bgcolor: "#fff",
+                                  },
+                                }}
+                              >
+                                {memory.visibility === "public" ? (
+                                  <PublicRoundedIcon sx={{ fontSize: 16 }} />
+                                ) : (
+                                  <LockOutlinedIcon sx={{ fontSize: 16 }} />
+                                )}
+                              </IconButton>
+                            </Stack>
+
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                left: 10,
+                                right: 10,
+                                bottom: 10,
+                                zIndex: 1,
+                              }}
+                            >
+                              <Typography
+                                fontSize="0.88rem"
+                                fontWeight={800}
+                                color="#fff"
+                                sx={{
+                                  textShadow: "0 2px 10px rgba(15,23,42,0.45)",
+                                }}
+                              >
+                                {memory.title || `Memory ${index + 1}`}
+                              </Typography>
                               <Stack
                                 direction="row"
                                 justifyContent="space-between"
                                 alignItems="center"
-                                spacing={1}
+                                sx={{ mt: 0.75 }}
                               >
-                                <Box>
-                                  <Typography fontWeight={700} color="#1c1917">
-                                    {memory.title || `Memory ${index + 1}`}
-                                  </Typography>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                  >
-                                    {memory.visibility === "public"
-                                      ? "Shown in your dashboard gallery"
-                                      : "Only visible to you"}
-                                  </Typography>
-                                  {memory.tripTitle ? (
-                                    <Typography
-                                      variant="caption"
-                                      sx={{
-                                        color: "#2563eb",
-                                        display: "block",
-                                        mt: 0.25,
-                                      }}
-                                    >
-                                      Trip: {memory.tripTitle}
-                                    </Typography>
-                                  ) : null}
-                                </Box>
-                                <Stack
-                                  direction="row"
-                                  spacing={0.25}
-                                  alignItems="center"
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "rgba(255,255,255,0.88)" }}
                                 >
-                                  <LockOutlinedIcon
-                                    sx={{
-                                      fontSize: 16,
-                                      color:
-                                        memory.visibility === "public"
-                                          ? "#94a3b8"
-                                          : "#2563eb",
-                                    }}
-                                  />
-                                  <Switch
+                                  {memory.visibility === "public"
+                                    ? "Shared"
+                                    : "Private"}
+                                </Typography>
+                                <Stack direction="row" spacing={0.5}>
+                                  <IconButton
                                     size="small"
-                                    checked={memory.visibility === "public"}
-                                    onChange={() =>
-                                      handleToggleMemoryVisibility(index)
+                                    aria-label={`View memory ${index + 1}`}
+                                    onClick={() =>
+                                      handleOpenMemoryViewer(memory)
                                     }
-                                    inputProps={{
-                                      "aria-label": `Toggle memory ${index + 1} visibility`,
-                                    }}
-                                  />
-                                  <PublicRoundedIcon
                                     sx={{
-                                      fontSize: 16,
-                                      color:
-                                        memory.visibility === "public"
-                                          ? "#2563eb"
-                                          : "#94a3b8",
+                                      width: 28,
+                                      height: 28,
+                                      bgcolor: "rgba(255,255,255,0.9)",
+                                      color: "#2563eb",
+                                      "&:hover": { bgcolor: "#fff" },
                                     }}
-                                  />
+                                  >
+                                    <VisibilityOutlinedIcon
+                                      sx={{ fontSize: 16 }}
+                                    />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    aria-label={`Edit memory ${index + 1}`}
+                                    onClick={() => handleRenameMemory(index)}
+                                    sx={{
+                                      width: 28,
+                                      height: 28,
+                                      bgcolor: "rgba(255,255,255,0.9)",
+                                      color: "#2563eb",
+                                      "&:hover": { bgcolor: "#fff" },
+                                    }}
+                                  >
+                                    <EditIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    aria-label={`Delete memory ${index + 1}`}
+                                    onClick={() =>
+                                      handleDeleteCollectionItem(
+                                        "gallery",
+                                        index,
+                                        "Memory removed from your gallery.",
+                                      )
+                                    }
+                                    sx={{
+                                      width: 28,
+                                      height: 28,
+                                      bgcolor: "rgba(255,255,255,0.9)",
+                                      color: "#dc2626",
+                                      "&:hover": { bgcolor: "#fff" },
+                                    }}
+                                  >
+                                    <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
                                 </Stack>
                               </Stack>
-
-                              <Stack
-                                direction="row"
-                                spacing={0.5}
-                                sx={{ mt: 1.25 }}
-                              >
-                                <IconButton
-                                  size="small"
-                                  aria-label={`View memory ${index + 1}`}
-                                  onClick={() => handleOpenMemoryViewer(memory)}
-                                  sx={{
-                                    borderRadius: 2,
-                                    border: "1px solid #dbeafe",
-                                    color: "#2563eb",
-                                  }}
-                                >
-                                  <VisibilityOutlinedIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  aria-label={`Edit memory ${index + 1}`}
-                                  onClick={() => handleRenameMemory(index)}
-                                  sx={{
-                                    borderRadius: 2,
-                                    border: "1px solid #dbeafe",
-                                    color: "#2563eb",
-                                  }}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  aria-label={`Delete memory ${index + 1}`}
-                                  onClick={() =>
-                                    handleDeleteCollectionItem(
-                                      "gallery",
-                                      index,
-                                      "Memory removed from your gallery.",
-                                    )
-                                  }
-                                  sx={{
-                                    borderRadius: 2,
-                                    border: "1px solid #fecaca",
-                                    color: "#dc2626",
-                                  }}
-                                >
-                                  <DeleteOutlineIcon fontSize="small" />
-                                </IconButton>
-                              </Stack>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      ))
+                            </Box>
+                          </Box>
+                        );
+                      })
                     ) : (
-                      <Grid item xs={12}>
-                        <Paper
-                          elevation={0}
-                          sx={{
-                            p: 2,
-                            borderRadius: 3,
-                            bgcolor: "#f8fbff",
-                            border: "1px dashed #bfdbfe",
-                          }}
-                        >
-                          <Typography
-                            fontWeight={700}
-                            sx={{ color: "#1c1917" }}
-                          >
-                            No memories yet
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Use the `+` button to start your private travel
-                            gallery.
-                          </Typography>
-                        </Paper>
-                      </Grid>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          bgcolor: "#f8fbff",
+                          border: "1px dashed #bfdbfe",
+                        }}
+                      >
+                        <Typography fontWeight={700} sx={{ color: "#1c1917" }}>
+                          No memories yet
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Use the `+` button to start your private travel
+                          gallery.
+                        </Typography>
+                      </Paper>
                     )}
-                  </Grid>
+                  </Box>
                 </Paper>
               )}
 
@@ -3052,7 +3084,7 @@ const UserDashboard = () => {
                         },
                       }}
                     >
-                      <Grid item xs={12} lg={6}>
+                      <Grid item xs={12} lg={travelSnapshotEnabled ? 6 : 12}>
                         <Paper elevation={0} sx={sectionCardSx}>
                           <Stack
                             direction="row"
@@ -3097,29 +3129,22 @@ const UserDashboard = () => {
                                 sm={6}
                                 key={`${trip.title}-${index}`}
                               >
-                                <Card
-                                  sx={{
-                                    borderRadius: 3,
-                                    boxShadow: "none",
-                                    border: "1px solid #dbeafe",
-                                  }}
-                                >
-                                  <CardContent>
-                                    <Box
-                                      component="img"
-                                      src={
-                                        galleryStrip[index] ||
-                                        featuredPlan?.photo
-                                      }
-                                      alt={trip.title}
-                                      sx={{
-                                        width: "100%",
-                                        height: 110,
-                                        objectFit: "cover",
-                                        borderRadius: 2.5,
-                                        mb: 1.25,
-                                      }}
-                                    />
+                                <Card sx={compactTripCardSx}>
+                                  <Box
+                                    component="img"
+                                    src={
+                                      galleryStrip[index] || featuredPlan?.photo
+                                    }
+                                    alt={trip.title}
+                                    sx={{
+                                      width: "100%",
+                                      height: { xs: 150, md: 132 },
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                  <CardContent
+                                    sx={{ p: 1.4, "&:last-child": { pb: 1.4 } }}
+                                  >
                                     <Typography
                                       fontWeight={700}
                                       sx={{ color: "#1c1917" }}
@@ -3197,103 +3222,108 @@ const UserDashboard = () => {
                         </Paper>
                       </Grid>
 
-                      <Grid item xs={12} lg={6}>
-                        <Paper elevation={0} sx={sectionCardSx}>
-                          <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="flex-start"
-                            mb={2}
-                          >
-                            <Box>
-                              <Typography
-                                variant="h5"
-                                fontWeight={800}
-                                color="#1c1917"
-                              >
-                                Travel Snapshot
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                Check in on your next dream locations.
-                              </Typography>
-                            </Box>
-                            <Button
-                              size="small"
-                              component={RouterLink}
-                              to="/tours"
-                              sx={{ ...compactPillButtonSx, color: "#2563eb" }}
+                      {travelSnapshotEnabled && (
+                        <Grid item xs={12} lg={6}>
+                          <Paper elevation={0} sx={sectionCardSx}>
+                            <Stack
+                              direction="row"
+                              justifyContent="space-between"
+                              alignItems="flex-start"
+                              mb={2}
                             >
-                              Expand
-                            </Button>
-                          </Stack>
-
-                          <Stack spacing={1.1} sx={{ mt: 0.5 }}>
-                            {friendTrips.map((trip) => (
-                              <Paper
-                                key={`${trip.name}-${trip.place}`}
-                                elevation={0}
+                              <Box>
+                                <Typography
+                                  variant="h5"
+                                  fontWeight={800}
+                                  color="#1c1917"
+                                >
+                                  Travel Snapshot
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  Check in on your next dream locations.
+                                </Typography>
+                              </Box>
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to="/tours"
                                 sx={{
-                                  p: 1.1,
-                                  borderRadius: 3,
-                                  border: "1px solid #dbeafe",
-                                  bgcolor: "#f8fbff",
+                                  ...compactPillButtonSx,
+                                  color: "#2563eb",
                                 }}
                               >
-                                <Stack
-                                  direction="row"
-                                  justifyContent="space-between"
-                                  spacing={1}
+                                Expand
+                              </Button>
+                            </Stack>
+
+                            <Stack spacing={1.1} sx={{ mt: 0.5 }}>
+                              {friendTrips.map((trip) => (
+                                <Paper
+                                  key={`${trip.name}-${trip.place}`}
+                                  elevation={0}
+                                  sx={{
+                                    p: 1.1,
+                                    borderRadius: 3,
+                                    border: "1px solid #dbeafe",
+                                    bgcolor: "#f8fbff",
+                                  }}
                                 >
-                                  <Box>
-                                    <Typography
-                                      fontSize="0.88rem"
-                                      fontWeight={700}
-                                      color="#1c1917"
-                                    >
-                                      {trip.name}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      display="block"
-                                    >
-                                      {trip.note}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      sx={{ color: "#2563eb" }}
-                                    >
-                                      {trip.place}
-                                    </Typography>
-                                  </Box>
-                                  <Button
-                                    size="small"
-                                    component={RouterLink}
-                                    to={trip.to}
-                                    variant="contained"
-                                    sx={{
-                                      ...compactPillButtonSx,
-                                      alignSelf: "center",
-                                      bgcolor: "#2563eb",
-                                      color: "#fff",
-                                      boxShadow: "none",
-                                      "&:hover": {
-                                        bgcolor: "#1d4ed8",
-                                        boxShadow: "none",
-                                      },
-                                    }}
+                                  <Stack
+                                    direction="row"
+                                    justifyContent="space-between"
+                                    spacing={1}
                                   >
-                                    Join now
-                                  </Button>
-                                </Stack>
-                              </Paper>
-                            ))}
-                          </Stack>
-                        </Paper>
-                      </Grid>
+                                    <Box>
+                                      <Typography
+                                        fontSize="0.88rem"
+                                        fontWeight={700}
+                                        color="#1c1917"
+                                      >
+                                        {trip.name}
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                        display="block"
+                                      >
+                                        {trip.note}
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#2563eb" }}
+                                      >
+                                        {trip.place}
+                                      </Typography>
+                                    </Box>
+                                    <Button
+                                      size="small"
+                                      component={RouterLink}
+                                      to={trip.to}
+                                      variant="contained"
+                                      sx={{
+                                        ...compactPillButtonSx,
+                                        alignSelf: "center",
+                                        bgcolor: "#2563eb",
+                                        color: "#fff",
+                                        boxShadow: "none",
+                                        "&:hover": {
+                                          bgcolor: "#1d4ed8",
+                                          boxShadow: "none",
+                                        },
+                                      }}
+                                    >
+                                      Join now
+                                    </Button>
+                                  </Stack>
+                                </Paper>
+                              ))}
+                            </Stack>
+                          </Paper>
+                        </Grid>
+                      )}
                     </Grid>
 
                     <Grid
@@ -3423,101 +3453,103 @@ const UserDashboard = () => {
                         </Paper>
                       </Grid>
 
-                      <Grid item xs={12} lg={5}>
-                        <Paper elevation={0} sx={sectionCardSx}>
-                          <Stack
-                            direction={{ xs: "column", sm: "row" }}
-                            justifyContent="space-between"
-                            alignItems={{ xs: "flex-start", sm: "center" }}
-                            spacing={1.25}
-                            sx={{ mb: 1.5 }}
-                          >
-                            <Box>
-                              <Typography
-                                variant="h5"
-                                fontWeight={800}
-                                color="#1c1917"
-                              >
-                                Memories Gallery
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                Add memories and choose if they stay public or
-                                private.
-                              </Typography>
-                            </Box>
-
+                      {memoryGalleryEnabled && (
+                        <Grid item xs={12} lg={5}>
+                          <Paper elevation={0} sx={sectionCardSx}>
                             <Stack
-                              direction="row"
-                              spacing={0.75}
-                              alignItems="center"
+                              direction={{ xs: "column", sm: "row" }}
+                              justifyContent="space-between"
+                              alignItems={{ xs: "flex-start", sm: "center" }}
+                              spacing={1.25}
+                              sx={{ mb: 1.5 }}
                             >
-                              <IconButton
-                                component="label"
-                                size="small"
-                                aria-label="Add memory"
-                                sx={{
-                                  width: 38,
-                                  height: 38,
-                                  borderRadius: 2.5,
-                                  bgcolor: "#2563eb",
-                                  color: "#fff",
-                                  border: "1px solid #bfdbfe",
-                                  boxShadow: "none",
-                                  "&:hover": {
-                                    bgcolor: "#1d4ed8",
-                                    boxShadow: "none",
-                                  },
-                                }}
-                              >
-                                <AddRoundedIcon fontSize="small" />
-                                <input
-                                  hidden
-                                  accept="image/*"
-                                  multiple
-                                  type="file"
-                                  onChange={handleGalleryUpload}
-                                />
-                              </IconButton>
-                              <Button
-                                size="small"
-                                startIcon={
-                                  <OpenInFullRoundedIcon fontSize="small" />
-                                }
-                                onClick={() => setTab(1)}
-                                sx={{
-                                  ...compactPillButtonSx,
-                                  color: "#2563eb",
-                                  border: "1px solid #dbeafe",
-                                  bgcolor: "#f8fbff",
-                                }}
-                              >
-                                Expand
-                              </Button>
-                            </Stack>
-                          </Stack>
+                              <Box>
+                                <Typography
+                                  variant="h5"
+                                  fontWeight={800}
+                                  color="#1c1917"
+                                >
+                                  Memories Gallery
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  Add memories and choose if they stay public or
+                                  private.
+                                </Typography>
+                              </Box>
 
-                          <Stack spacing={1.1}>
-                            {memories.length ? (
-                              memories.slice(0, 4).map((memory, index) => (
-                                <Paper
-                                  key={memory.id || `memory-card-${index}`}
-                                  elevation={0}
+                              <Stack
+                                direction="row"
+                                spacing={0.75}
+                                alignItems="center"
+                              >
+                                <IconButton
+                                  component="label"
+                                  size="small"
+                                  aria-label="Add memory"
                                   sx={{
-                                    p: 1,
-                                    borderRadius: 3,
-                                    border: "1px solid #dbeafe",
-                                    bgcolor:
-                                      memory.visibility === "public"
-                                        ? "#f8fbff"
-                                        : "#f8fafc",
+                                    width: 38,
+                                    height: 38,
+                                    borderRadius: 2.5,
+                                    bgcolor: "#2563eb",
+                                    color: "#fff",
+                                    border: "1px solid #bfdbfe",
+                                    boxShadow: "none",
+                                    "&:hover": {
+                                      bgcolor: "#1d4ed8",
+                                      boxShadow: "none",
+                                    },
                                   }}
                                 >
-                                  <Stack
-                                    direction={{ xs: "column", sm: "row" }}
-                                    spacing={1.2}
+                                  <AddRoundedIcon fontSize="small" />
+                                  <input
+                                    hidden
+                                    accept="image/*"
+                                    multiple
+                                    type="file"
+                                    onChange={handleGalleryUpload}
+                                  />
+                                </IconButton>
+                                <Button
+                                  size="small"
+                                  startIcon={
+                                    <OpenInFullRoundedIcon fontSize="small" />
+                                  }
+                                  onClick={() => setTab(1)}
+                                  sx={{
+                                    ...compactPillButtonSx,
+                                    color: "#2563eb",
+                                    border: "1px solid #dbeafe",
+                                    bgcolor: "#f8fbff",
+                                  }}
+                                >
+                                  Expand
+                                </Button>
+                              </Stack>
+                            </Stack>
+
+                            <Box
+                              sx={{
+                                display: "grid",
+                                gridTemplateColumns:
+                                  "repeat(2, minmax(0, 1fr))",
+                                gap: 1,
+                              }}
+                            >
+                              {memories.length ? (
+                                memories.slice(0, 4).map((memory, index) => (
+                                  <Box
+                                    key={memory.id || `memory-card-${index}`}
+                                    sx={{
+                                      position: "relative",
+                                      minHeight: index === 0 ? 180 : 130,
+                                      borderRadius: 2.5,
+                                      overflow: "hidden",
+                                      border: "1px solid #dbeafe",
+                                      bgcolor: "#ffffff",
+                                    }}
                                   >
                                     <Box
                                       component="img"
@@ -3527,27 +3559,30 @@ const UserDashboard = () => {
                                         handleOpenMemoryViewer(memory)
                                       }
                                       sx={{
-                                        width: { xs: "100%", sm: 96 },
-                                        height: 96,
+                                        width: "100%",
+                                        height: "100%",
+                                        minHeight: index === 0 ? 180 : 130,
                                         objectFit: "cover",
-                                        borderRadius: 2.5,
                                         cursor: "pointer",
                                       }}
                                     />
-                                    <Box sx={{ flex: 1 }}>
+                                    <Box
+                                      sx={{
+                                        position: "absolute",
+                                        inset: 0,
+                                        background:
+                                          "linear-gradient(180deg, rgba(15,23,42,0.08) 0%, rgba(15,23,42,0.6) 100%)",
+                                        p: 1,
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        justifyContent: "space-between",
+                                      }}
+                                    >
                                       <Stack
                                         direction="row"
                                         justifyContent="space-between"
-                                        alignItems="center"
-                                        sx={{ mb: 0.5 }}
+                                        alignItems="flex-start"
                                       >
-                                        <Typography
-                                          fontWeight={700}
-                                          sx={{ color: "#1c1917" }}
-                                        >
-                                          {memory.title ||
-                                            `Memory ${index + 1}`}
-                                        </Typography>
                                         <Chip
                                           size="small"
                                           label={
@@ -3555,171 +3590,80 @@ const UserDashboard = () => {
                                               ? "Public"
                                               : "Private"
                                           }
-                                          color={
-                                            memory.visibility === "public"
-                                              ? "primary"
-                                              : "default"
-                                          }
-                                          variant={
-                                            memory.visibility === "public"
-                                              ? "filled"
-                                              : "outlined"
-                                          }
-                                        />
-                                      </Stack>
-                                      <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                        display="block"
-                                      >
-                                        {memory.visibility === "public"
-                                          ? "Visible in your dashboard gallery."
-                                          : "Private memory — not shown in the page gallery."}
-                                      </Typography>
-                                      {memory.tripTitle ? (
-                                        <Typography
-                                          variant="caption"
                                           sx={{
+                                            height: 22,
+                                            bgcolor: "rgba(255,255,255,0.88)",
+                                          }}
+                                        />
+                                        <IconButton
+                                          size="small"
+                                          onClick={() =>
+                                            handleToggleMemoryVisibility(index)
+                                          }
+                                          sx={{
+                                            width: 26,
+                                            height: 26,
+                                            bgcolor: "rgba(255,255,255,0.88)",
                                             color: "#2563eb",
-                                            display: "block",
-                                            mt: 0.35,
                                           }}
                                         >
-                                          Trip: {memory.tripTitle}
-                                        </Typography>
-                                      ) : null}
-                                      <Stack
-                                        direction={{ xs: "column", sm: "row" }}
-                                        justifyContent="space-between"
-                                        alignItems={{
-                                          xs: "flex-start",
-                                          sm: "center",
-                                        }}
-                                        spacing={0.75}
-                                        useFlexGap
-                                        flexWrap="wrap"
-                                        sx={{ mt: 1 }}
-                                      >
-                                        <Stack
-                                          direction="row"
-                                          spacing={0.35}
-                                          alignItems="center"
-                                        >
-                                          <LockOutlinedIcon
-                                            sx={{
-                                              fontSize: 16,
-                                              color:
-                                                memory.visibility === "public"
-                                                  ? "#94a3b8"
-                                                  : "#2563eb",
-                                            }}
-                                          />
-                                          <Switch
-                                            size="small"
-                                            checked={
-                                              memory.visibility === "public"
-                                            }
-                                            onChange={() =>
-                                              handleToggleMemoryVisibility(
-                                                index,
-                                              )
-                                            }
-                                            inputProps={{
-                                              "aria-label": `Toggle memory ${index + 1} visibility`,
-                                            }}
-                                          />
-                                          <PublicRoundedIcon
-                                            sx={{
-                                              fontSize: 16,
-                                              color:
-                                                memory.visibility === "public"
-                                                  ? "#2563eb"
-                                                  : "#94a3b8",
-                                            }}
-                                          />
-                                        </Stack>
-                                        <Stack direction="row" spacing={0.5}>
-                                          <IconButton
-                                            size="small"
-                                            aria-label={`View memory ${index + 1}`}
-                                            onClick={() =>
-                                              handleOpenMemoryViewer(memory)
-                                            }
-                                            sx={{
-                                              borderRadius: 2,
-                                              border: "1px solid #dbeafe",
-                                              color: "#2563eb",
-                                            }}
-                                          >
-                                            <VisibilityOutlinedIcon fontSize="small" />
-                                          </IconButton>
-                                          <IconButton
-                                            size="small"
-                                            aria-label={`Edit memory ${index + 1}`}
-                                            onClick={() =>
-                                              handleRenameMemory(index)
-                                            }
-                                            sx={{
-                                              borderRadius: 2,
-                                              border: "1px solid #dbeafe",
-                                              color: "#2563eb",
-                                            }}
-                                          >
-                                            <EditIcon fontSize="small" />
-                                          </IconButton>
-                                          <IconButton
-                                            size="small"
-                                            aria-label={`Delete memory ${index + 1}`}
-                                            onClick={() =>
-                                              handleDeleteCollectionItem(
-                                                "gallery",
-                                                index,
-                                                "Memory removed from your gallery.",
-                                              )
-                                            }
-                                            sx={{
-                                              borderRadius: 2,
-                                              border: "1px solid #fecaca",
-                                              color: "#dc2626",
-                                            }}
-                                          >
-                                            <DeleteOutlineIcon fontSize="small" />
-                                          </IconButton>
-                                        </Stack>
+                                          {memory.visibility === "public" ? (
+                                            <PublicRoundedIcon
+                                              sx={{ fontSize: 15 }}
+                                            />
+                                          ) : (
+                                            <LockOutlinedIcon
+                                              sx={{ fontSize: 15 }}
+                                            />
+                                          )}
+                                        </IconButton>
                                       </Stack>
+
+                                      <Typography
+                                        fontSize="0.78rem"
+                                        fontWeight={700}
+                                        color="#fff"
+                                        sx={{
+                                          textShadow:
+                                            "0 2px 8px rgba(15,23,42,0.5)",
+                                        }}
+                                      >
+                                        {memory.title || `Memory ${index + 1}`}
+                                      </Typography>
                                     </Box>
-                                  </Stack>
+                                  </Box>
+                                ))
+                              ) : (
+                                <Paper
+                                  elevation={0}
+                                  sx={{
+                                    p: 2,
+                                    borderRadius: 3,
+                                    bgcolor: "#f8fbff",
+                                    border: "1px dashed #bfdbfe",
+                                    gridColumn: "1 / -1",
+                                  }}
+                                >
+                                  <Typography
+                                    fontWeight={700}
+                                    sx={{ color: "#1c1917" }}
+                                  >
+                                    No memories yet
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    Upload your favorite moments here. Keep them
+                                    private or share them publicly later.
+                                  </Typography>
                                 </Paper>
-                              ))
-                            ) : (
-                              <Paper
-                                elevation={0}
-                                sx={{
-                                  p: 2,
-                                  borderRadius: 3,
-                                  bgcolor: "#f8fbff",
-                                  border: "1px dashed #bfdbfe",
-                                }}
-                              >
-                                <Typography
-                                  fontWeight={700}
-                                  sx={{ color: "#1c1917" }}
-                                >
-                                  No memories yet
-                                </Typography>
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ mt: 0.5 }}
-                                >
-                                  Upload your favorite moments here. Keep them
-                                  private or share them publicly later.
-                                </Typography>
-                              </Paper>
-                            )}
-                          </Stack>
-                        </Paper>
-                      </Grid>
+                              )}
+                            </Box>
+                          </Paper>
+                        </Grid>
+                      )}
                     </Grid>
                   </>
                 )}

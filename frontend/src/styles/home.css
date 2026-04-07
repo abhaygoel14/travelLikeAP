@@ -105,24 +105,107 @@
 
 .gallery__wrapper,
 .testimonial__wrapper {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .gallery__item {
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 18px;
+}
+
+.gallery__item--instagram {
+  position: relative;
+  border-radius: 22px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
+  isolation: isolate;
+}
+
+.gallery__item--instagram::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  pointer-events: none;
 }
 
 .masonry__img {
   display: block;
   width: 100%;
-  border-radius: 10px;
+  min-height: 220px;
+  object-fit: cover;
+  border-radius: 22px;
   transform-origin: center;
-  transition: transform 0.3s ease;
+  transition:
+    transform 0.35s ease,
+    filter 0.35s ease;
 }
 
-.masonry__img:hover {
-  transform: scale(1.04);
+.gallery__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.9rem;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.1) 0%,
+    rgba(15, 23, 42, 0.22) 38%,
+    rgba(15, 23, 42, 0.82) 100%
+  );
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.gallery__overlay-top,
+.gallery__stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.gallery__profile,
+.gallery__pill,
+.gallery__stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.gallery__profile,
+.gallery__stats span {
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  padding: 0.35rem 0.6rem;
+}
+
+.gallery__pill {
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0.35rem 0.65rem;
+}
+
+.gallery__overlay-bottom p {
+  margin-bottom: 0.55rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.gallery__item--instagram:hover .gallery__overlay {
+  opacity: 1;
+}
+
+.gallery__item--instagram:hover .masonry__img {
+  transform: scale(1.05);
+  filter: saturate(1.08);
 }
 
 /* TESTIMONIAL SECTION */

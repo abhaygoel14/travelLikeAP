@@ -90,9 +90,9 @@ const Home = () => {
                   poster={heroImg04}
                   autoPlay
                   loop
+                  muted
                   playsInline
                   preload="auto"
-                  controls
                 />
               </div>
             </Col>
