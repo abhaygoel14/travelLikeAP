@@ -177,13 +177,13 @@ const mobileScrollableRowSx = {
   },
 };
 
-const dashboardSectionGridSx = {
-  alignItems: "stretch",
-  "& > .MuiGrid-item": {
-    display: "flex",
-    pl: { xs: "0 !important", sm: undefined },
-  },
-};
+// const dashboardSectionGridSx = {
+//   alignItems: "stretch",
+//   "& > .MuiGrid-item": {
+//     display: "flex",
+//     pl: { xs: "0 !important", sm: undefined },
+//   },
+// };
 
 const compactTripCardSx = {
   height: "100%",
