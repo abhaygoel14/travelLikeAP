@@ -1,22 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import TourCard from "../../shared/TourCard";
 import { Col } from "reactstrap";
 import { TravelCardPlaceholder } from "../../shared/TravelLoader";
-// use local mock data during development
-import toursMock from "../../assets/data/tours";
+import useTours from "../../hooks/useTours";
 
 const FeaturedTourList = () => {
-  const [loading, setLoading] = useState(true);
-  const featuredTours = (toursMock || []).filter((t) => t.featured);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 320);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const { featuredTours, loading } = useTours();
+  const visibleTours = featuredTours.slice(0, 4);
 
   return (
     <>
-      {(loading ? Array.from({ length: 4 }) : featuredTours).map(
+      {(loading ? Array.from({ length: 4 }) : visibleTours).map(
         (tour, index) => (
           <Col
             lg="3"

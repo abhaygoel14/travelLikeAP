@@ -3,10 +3,25 @@ import { Card, CardBody } from "reactstrap";
 import { Link } from "react-router-dom";
 import "./tour-card.css";
 import calculateAvgRating from "../utils/avgRating";
+import { formatPrice, formatTourDateRange } from "../utils/tourSchema";
 import { MediaWithShimmer } from "./TravelLoader";
 
 const TourCard = ({ tour }) => {
-  const { _id, title, city, photo, price, featured, reviews } = tour;
+  const {
+    _id,
+    id,
+    title,
+    city,
+    photo,
+    price,
+    featured,
+    reviews,
+    startDate,
+    endDate,
+    details,
+  } = tour;
+  const tourId = _id || id;
+  const tourDate = formatTourDateRange(startDate, endDate, details?.dateRange);
 
   const { totalRating, avgRating } = calculateAvgRating(reviews);
 
@@ -35,18 +50,24 @@ const TourCard = ({ tour }) => {
           </div>
 
           <h5 className="tour__title">
-            <Link to={`/tours/${_id}`}>{title}</Link>
+            <Link to={`/tours/${tourId}`}>{title}</Link>
           </h5>
+
+          {tourDate ? (
+            <span className="tour__date d-flex align-items-center gap-1">
+              <i className="ri-calendar-line"></i> {tourDate}
+            </span>
+          ) : null}
 
           <div className="card__bottom d-flex align-items-center justify-content-between mt-3">
             <h5>
-              ${price} <span> /per person</span>
+              {formatPrice(price)} <span> /per person</span>
             </h5>
 
             {/* <button className=' booking__btn'>
                      <Link to={`/tours/${_id}`}>Book Now</Link>
                   </button> */}
-            <Link to={`/tours/${_id}`}>
+            <Link to={`/tours/${tourId}`}>
               <button className=" booking__btn">Book Now</button>
             </Link>
           </div>

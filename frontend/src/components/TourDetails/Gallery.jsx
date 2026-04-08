@@ -61,49 +61,65 @@ export default function Gallery({ images = [] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeLen]);
 
+  const sideImages = images
+    .map((img, imageIndex) => ({ img, imageIndex }))
+    .filter((item) => item.imageIndex !== index)
+    .slice(0, 4);
+
   return (
     <div className="td-gallery" ref={containerRef}>
-      <div className="td-gallery-main">
-        <button
-          className="gallery-arrow left"
-          onClick={() => select(index - 1)}
-          aria-label="Previous"
-        >
-          ‹
-        </button>
-        {safeLen > 0 ? (
-          <motion.img
-            key={index}
-            src={images[index]}
-            alt={`slide-${index}`}
-            initial={{ opacity: 0.6, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.45 }}
-          />
-        ) : (
-          <div className="td-gallery-empty">No images</div>
-        )}
-        <button
-          className="gallery-arrow right"
-          onClick={() => select(index + 1)}
-          aria-label="Next"
-        >
-          ›
-        </button>
-      </div>
+      {safeLen > 0 ? (
+        <div className="td-gallery-layout">
+          <div className="td-gallery-main">
+            <button
+              className="gallery-arrow left"
+              onClick={() => select(index - 1)}
+              aria-label="Previous"
+            >
+              ‹
+            </button>
+            <motion.img
+              key={index}
+              src={images[index]}
+              alt={`slide-${index}`}
+              initial={{ opacity: 0.6, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.45 }}
+            />
+            <button
+              className="gallery-arrow right"
+              onClick={() => select(index + 1)}
+              aria-label="Next"
+            >
+              ›
+            </button>
+            <span className="td-gallery-counter">
+              {index + 1}/{safeLen}
+            </span>
+          </div>
 
-      <div className="td-gallery-thumbs">
-        {images.map((img, i) => (
-          <button
-            key={i}
-            className={"thumb " + (i === index ? "active" : "")}
-            onClick={() => select(i)}
-            aria-label={`Show image ${i + 1}`}
-          >
-            <img src={img} alt={`thumb-${i}`} />
-          </button>
-        ))}
-      </div>
+          {sideImages.length ? (
+            <div className="td-gallery-side">
+              {sideImages.map(({ img, imageIndex }, tileIndex) => (
+                <button
+                  key={`${img}-${imageIndex}`}
+                  type="button"
+                  className="td-gallery-tile"
+                  onClick={() => select(imageIndex)}
+                  aria-label={`Show image ${imageIndex + 1}`}
+                >
+                  <img src={img} alt={`thumb-${imageIndex}`} />
+                  {tileIndex === sideImages.length - 1 && safeLen > 5 ? (
+                    <span className="td-gallery-more">+{safeLen - 5}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="td-gallery-empty">No images</div>
+      )}
     </div>
   );
 }

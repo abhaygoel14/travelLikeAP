@@ -74,6 +74,13 @@
   font-size: 0.92rem;
 }
 
+.tour__date {
+  color: var(--text-color);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.tour__date i,
 .tour__rating i,
 .tour__location i {
   font-size: 0.95rem;

@@ -1,32 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import CommonSection from "../shared/CommonSection";
-// import tourData from '../assets/data/tours'
 import "../styles/tour.css";
 import TourCard from "./../shared/TourCard";
 import SearchBar from "./../shared/SearchBar";
 import Newsletter from "./../shared/Newsletter";
 import { Col, Container, Row } from "reactstrap";
 import { TravelCardPlaceholder } from "../shared/TravelLoader";
-// import useFetch from '../hooks/useFetch'
-// import { BASE_URL } from '../utils/config'
-import toursMock from "../assets/data/tours";
+import useTours from "../hooks/useTours";
 
 const Tours = () => {
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(0);
   const [pageLoading, setPageLoading] = useState(true);
+  const { tours, loading } = useTours();
 
-  // Using mock data instead of API during development
   const toursPerPage = 8;
-  const displayedTours = toursMock.slice(
-    page * toursPerPage,
-    (page + 1) * toursPerPage,
+  const displayedTours = useMemo(
+    () => tours.slice(page * toursPerPage, (page + 1) * toursPerPage),
+    [page, tours],
   );
 
   useEffect(() => {
     setPageLoading(true);
-    const pages = Math.ceil(toursMock.length / toursPerPage);
-    setPageCount(pages);
+    const pages = Math.ceil((tours.length || 0) / toursPerPage);
+    setPageCount(pages || 1);
     window.scrollTo(0, 0);
 
     const timer = window.setTimeout(() => {
@@ -34,7 +31,7 @@ const Tours = () => {
     }, 280);
 
     return () => window.clearTimeout(timer);
-  }, [page]);
+  }, [page, tours]);
 
   return (
     <>
@@ -53,7 +50,7 @@ const Tours = () => {
                {error && <h4 className='text-center pt-5'>{error}</h4>} */}
           {
             <Row>
-              {pageLoading
+              {loading || pageLoading
                 ? Array.from({ length: toursPerPage }).map((_, index) => (
                     <Col
                       lg="3"
@@ -77,7 +74,7 @@ const Tours = () => {
                     </Col>
                   ))}
 
-              {!pageLoading && (
+              {!loading && !pageLoading && (
                 <Col lg="12">
                   <div className="pagination d-flex align-items-center justify-content-center mt-4 gap-3">
                     {[...Array(pageCount).keys()].map((number) => (

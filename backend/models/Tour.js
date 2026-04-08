@@ -19,6 +19,14 @@ const tourSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    startDate: {
+      type: Date,
+      required: false,
+    },
+    endDate: {
+      type: Date,
+      required: false,
+    },
     photo: {
       type: String,
       required: true,
@@ -48,7 +56,7 @@ const tourSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Tour", tourSchema);

@@ -5,6 +5,7 @@ import Logo from "../../assets/images/logo.png";
 import userPlaceholder from "../../assets/images/user.png";
 import "./header.css";
 import { AuthContext } from "../../context/AuthContext";
+import { FEATURE_FLAGS } from "../../config/featureFlags";
 
 const baseNavLinks = [
   { path: "/home", display: "Home" },
@@ -16,15 +17,24 @@ const Header = () => {
   const headerRef = useRef(null);
   const menuRef = useRef(null);
   const navigate = useNavigate();
-  const { user, dispatch } = useContext(AuthContext);
+  const { user, dispatch, userRole } = useContext(AuthContext);
+  const canOpenAdminPortal = FEATURE_FLAGS.adminTourPortal && Boolean(user);
 
-  const navLinks = useMemo(
-    () =>
-      user
-        ? [...baseNavLinks, { path: "/users", display: "Traveller" }]
-        : baseNavLinks,
-    [user],
-  );
+  const navLinks = useMemo(() => {
+    const links = user
+      ? [...baseNavLinks, { path: "/users", display: "Traveller" }]
+      : [...baseNavLinks];
+
+    if (canOpenAdminPortal) {
+      links.push({
+        path: "/admin",
+        display:
+          String(userRole || "").toLowerCase() === "admin" ? "Admin" : "Portal",
+      });
+    }
+
+    return links;
+  }, [canOpenAdminPortal, user, userRole]);
 
   const firstName = useMemo(() => {
     const source =

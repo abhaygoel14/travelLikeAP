@@ -9,6 +9,7 @@ import TourDetails from "./../pages/TourDetails";
 import Tours from "./../pages/Tours";
 import About from "../pages/About";
 import UserDashboard from "../pages/UserDashboard";
+import AdminPortal from "../pages/AdminPortal";
 
 const Routers = () => {
   return (
@@ -22,6 +23,7 @@ const Routers = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/users" element={<UserDashboard />} />
       <Route path="/dashboard" element={<UserDashboard />} />
+      <Route path="/admin" element={<AdminPortal />} />
       <Route path="/thank-you" element={<ThankYou />} />
       <Route path="/tours/search" element={<SearchResultList />} />
     </Routes>

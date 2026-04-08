@@ -1,0 +1,147 @@
+.admin-portal-section {
+  background: #f8fbff;
+}
+
+.admin-portal-intro,
+.admin-panel-card {
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 20px;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.08);
+}
+
+.admin-portal-intro {
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-portal-intro h2 {
+  margin-bottom: 0.35rem;
+  color: #0f172a;
+  font-size: 1.7rem;
+}
+
+.admin-portal-intro p {
+  margin-bottom: 0;
+  color: #475569;
+}
+
+.admin-portal-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #2563eb !important;
+  margin-bottom: 0.35rem !important;
+}
+
+.admin-portal-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.admin-panel-card {
+  padding: 1rem 1.1rem;
+  height: 100%;
+}
+
+.admin-panel-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.admin-panel-card__header h4 {
+  margin-bottom: 0.2rem;
+  color: #0f172a;
+}
+
+.admin-panel-card__header p {
+  margin-bottom: 0;
+  color: #64748b;
+}
+
+.admin-tour-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.admin-tour-item {
+  width: 100%;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fbff;
+  padding: 0.8rem 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  gap: 0.75rem;
+}
+
+.admin-tour-item strong,
+.admin-tour-item span {
+  display: block;
+}
+
+.admin-tour-item span {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+}
+
+.admin-tour-item.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.admin-checkbox-group {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  width: 100%;
+}
+
+.admin-form-actions,
+.preview-mode-switcher {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-form-actions {
+  margin-top: 0.75rem;
+}
+
+.admin-loader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
+}
+
+.admin-preview-note {
+  padding: 1rem;
+  border: 1px dashed #bfdbfe;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+
+.admin-preview-note h5 {
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 768px) {
+  .admin-portal-intro,
+  .admin-panel-card__header {
+    flex-direction: column;
+  }
+}

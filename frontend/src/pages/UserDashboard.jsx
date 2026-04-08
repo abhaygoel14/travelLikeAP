@@ -29,7 +29,7 @@ import CreditCardIcon from "@mui/icons-material/CreditCard";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import SaveIcon from "@mui/icons-material/Save";
-// import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -48,13 +48,14 @@ import {
   uploadString,
 } from "firebase/storage";
 import { AuthContext } from "../context/AuthContext";
-import toursData from "../assets/data/tours";
 import galleryImages from "../components/Image-gallery/galleryImage";
+import useTours from "../hooks/useTours";
 import ReceiptPanel from "../components/UserDashboard/ReceiptPanel";
 import { TravellerDashboardSkeleton } from "../shared/TravelLoader";
 import Logo from "../assets/images/logo.png";
 import { FEATURE_FLAGS } from "../config/featureFlags";
 import { auth, realtimeDb, storage } from "../utils/firebaseConfig";
+import { formatPrice, formatTourDateRange } from "../utils/tourSchema";
 
 const defaultTrips = [
   {
@@ -566,11 +567,13 @@ const normalizeProfile = (user = {}) => {
       Array.isArray(user.reviews) && user.reviews.length
         ? user.reviews
         : defaultReviews,
+    wishlist: Array.isArray(user.wishlist) ? user.wishlist : [],
   };
 };
 
 const UserDashboard = () => {
   const { user, dispatch } = useContext(AuthContext);
+  const { tours } = useTours();
   const [tab, setTab] = useState(0);
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -605,6 +608,7 @@ const UserDashboard = () => {
   const isGalleryView = memoryGalleryEnabled && tab === 1;
   const isItineraryView = tab === 2;
   const isReceiptView = tab === 3;
+  const isWishlistView = tab === 4;
 
   const clearStatusMessage = () => {
     setStatus((prev) => ({ ...prev, message: "" }));
@@ -723,8 +727,37 @@ const UserDashboard = () => {
     return source.slice(0, 6);
   }, [memories]);
 
-  const recommendedPlaces = useMemo(() => toursData.slice(0, 4), []);
+  const recommendedPlaces = useMemo(() => tours.slice(0, 4), [tours]);
   const featuredPlan = recommendedPlaces[0] || null;
+
+  const wishlistItems = useMemo(
+    () =>
+      (profile.wishlist || []).map((item, index) => {
+        const savedTourId = String(
+          item?.id || item?._id || item?.tourId || "",
+        ).trim();
+        const relatedTour = tours.find(
+          (tour) => String(tour.id || tour._id || "") === savedTourId,
+        );
+        const mergedTour = { ...relatedTour, ...item };
+
+        return {
+          id: savedTourId || `wishlist-${index}`,
+          title: mergedTour.title || `Saved trip ${index + 1}`,
+          city: mergedTour.city || "Destination",
+          address: mergedTour.address || "Saved to your wishlist",
+          photo: mergedTour.photo || featuredPlan?.photo || "",
+          price: mergedTour.price || 0,
+          date: formatTourDateRange(
+            mergedTour.startDate,
+            mergedTour.endDate,
+            mergedTour.details?.dateRange || mergedTour.dateRange,
+          ),
+          route: savedTourId ? `/tours/${savedTourId}` : "/tours",
+        };
+      }),
+    [featuredPlan?.photo, profile.wishlist, tours],
+  );
 
   const itineraryTrips = useMemo(
     () =>
@@ -733,7 +766,7 @@ const UserDashboard = () => {
         const normalizedCity = String(trip.city || "").toLowerCase();
 
         const relatedTour =
-          toursData.find((tour) => {
+          tours.find((tour) => {
             const tourTitle = String(tour.title || "").toLowerCase();
             const tourCity = String(tour.city || "").toLowerCase();
 
@@ -811,6 +844,12 @@ const UserDashboard = () => {
         icon: <CreditCardIcon fontSize="small" />,
         to: "/dashboard",
         tabValue: 3,
+      },
+      {
+        label: "Wishlist",
+        icon: <FavoriteBorderIcon fontSize="small" />,
+        to: "/dashboard",
+        tabValue: 4,
       },
     ],
     [memoryGalleryEnabled],
@@ -1934,15 +1973,15 @@ const UserDashboard = () => {
                         startIcon={item.icon}
                         component={RouterLink}
                         to={item.to}
-                        onClick={() => setTab(index + 4)}
+                        onClick={() => setTab(index + 5)}
                         sx={{
                           ...compactNavButtonSx,
                           justifyContent: "flex-start",
                           bgcolor:
-                            tab === index + 4 ? "#eff6ff" : "transparent",
-                          color: tab === index + 4 ? "#2563eb" : "#1f2937",
+                            tab === index + 5 ? "#eff6ff" : "transparent",
+                          color: tab === index + 5 ? "#2563eb" : "#1f2937",
                           border:
-                            tab === index + 4
+                            tab === index + 5
                               ? "1px solid #bfdbfe"
                               : "1px solid transparent",
                         }}
@@ -2633,7 +2672,7 @@ const UserDashboard = () => {
                             >
                               <Chip
                                 size="small"
-                                label={`Budget $${trip.budget || trip.price || 0}`}
+                                label={`Budget ${formatPrice(trip.budget || trip.price || 0)}`}
                               />
                               <Chip size="small" label={`⭐ ${trip.rating}`} />
                             </Stack>
@@ -2694,6 +2733,166 @@ const UserDashboard = () => {
                     brandLogo={Logo}
                     brandName="Travel like AP"
                   />
+                </Paper>
+              )}
+
+              {!tabLoading && isWishlistView && (
+                <Paper elevation={0} sx={sectionCardSx}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    spacing={1.25}
+                    sx={{ mb: 2 }}
+                  >
+                    <Box>
+                      <Typography variant="h5" fontWeight={800} color="#1c1917">
+                        My Wishlist
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        View your saved tours and remove anything you no longer
+                        want.
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      size="small"
+                      onClick={() => setTab(0)}
+                      sx={{ ...compactPillButtonSx, color: "#2563eb" }}
+                    >
+                      Back to dashboard
+                    </Button>
+                  </Stack>
+
+                  {wishlistItems.length ? (
+                    <Grid container spacing={{ xs: 1.5, md: 2 }}>
+                      {wishlistItems.map((trip, index) => (
+                        <Grid item xs={12} md={6} key={`${trip.id}-${index}`}>
+                          <Card sx={compactTripCardSx}>
+                            <Box
+                              component="img"
+                              src={trip.photo}
+                              alt={trip.title}
+                              sx={{
+                                width: "100%",
+                                height: { xs: 170, md: 156 },
+                                objectFit: "cover",
+                                bgcolor: "#dbeafe",
+                              }}
+                            />
+                            <CardContent
+                              sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}
+                            >
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                alignItems="flex-start"
+                                spacing={1}
+                              >
+                                <Box>
+                                  <Typography fontWeight={800} color="#1c1917">
+                                    {trip.title}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    display="block"
+                                  >
+                                    {trip.city}
+                                    {trip.date ? ` • ${trip.date}` : ""}
+                                  </Typography>
+                                </Box>
+                                <Chip
+                                  size="small"
+                                  label="Saved"
+                                  sx={{ bgcolor: "#eff6ff", color: "#2563eb" }}
+                                />
+                              </Stack>
+
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: 1 }}
+                              >
+                                {trip.address}
+                              </Typography>
+
+                              <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                spacing={0.75}
+                                useFlexGap
+                                flexWrap="wrap"
+                                justifyContent="space-between"
+                                sx={{ mt: 1.5 }}
+                              >
+                                <Typography
+                                  fontSize="0.9rem"
+                                  fontWeight={700}
+                                  color="#2563eb"
+                                >
+                                  {formatPrice(trip.price)}
+                                </Typography>
+
+                                <Stack direction="row" spacing={0.75}>
+                                  <Button
+                                    size="small"
+                                    component={RouterLink}
+                                    to={trip.route}
+                                    sx={{
+                                      ...compactPillButtonSx,
+                                      color: "#2563eb",
+                                    }}
+                                  >
+                                    View tour
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    color="error"
+                                    onClick={() =>
+                                      handleDeleteCollectionItem(
+                                        "wishlist",
+                                        index,
+                                        "Tour removed from your wishlist.",
+                                      )
+                                    }
+                                    sx={{
+                                      ...compactPillButtonSx,
+                                      minWidth: 0,
+                                      px: 1.1,
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </Stack>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        bgcolor: "#f8fbff",
+                        border: "1px dashed #bfdbfe",
+                      }}
+                    >
+                      <Typography fontWeight={700} sx={{ color: "#1c1917" }}>
+                        No saved tours yet
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Add tours to your wishlist from the tour details page
+                        and they will appear here.
+                      </Typography>
+                    </Paper>
+                  )}
                 </Paper>
               )}
 
@@ -2959,7 +3158,8 @@ const UserDashboard = () => {
               {!tabLoading &&
                 !isGalleryView &&
                 !isItineraryView &&
-                !isReceiptView && (
+                !isReceiptView &&
+                !isWishlistView && (
                   <>
                     {isEditingProfile && (
                       <Paper elevation={0} sx={sectionCardSx}>
@@ -3175,7 +3375,8 @@ const UserDashboard = () => {
                                         fontSize="0.82rem"
                                         fontWeight={700}
                                       >
-                                        Budget: ${trip.budget || 990}
+                                        Budget:{" "}
+                                        {formatPrice(trip.budget || 990)}
                                       </Typography>
                                       <Stack direction="row" spacing={0.5}>
                                         <Button
@@ -3444,7 +3645,7 @@ const UserDashboard = () => {
                                     fontWeight={700}
                                     sx={{ color: "#2563eb" }}
                                   >
-                                    ${place.price}
+                                    {formatPrice(place.price)}
                                   </Typography>
                                 </Stack>
                               </Paper>
