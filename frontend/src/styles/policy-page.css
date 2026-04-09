@@ -1,0 +1,46 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap");
+
+.policy-page-section {
+  padding: 2rem 0 3rem;
+}
+
+.policy-page-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  padding: 1.25rem 1.35rem;
+}
+
+.policy-page-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
+}
+
+.policy-page-content {
+  color: #334155;
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+.policy-page-content h1,
+.policy-page-content h2,
+.policy-page-content h3,
+.policy-page-content h4 {
+  color: #0f172a;
+  margin-top: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.policy-page-content p,
+.policy-page-content ul,
+.policy-page-content ol {
+  margin-bottom: 0.8rem;
+}
+
+.policy-page-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}

@@ -31,6 +31,7 @@ import InclusionExclusion from "../components/TourDetails/InclusionExclusion";
 import PolicyTable from "../components/TourDetails/PolicyTable";
 import GuestReviews from "../components/TourDetails/GuestReviews";
 import PriceCard from "../components/TourDetails/PriceCard";
+import PolicyContentManager from "../components/Admin/PolicyContentManager";
 import { AuthContext } from "../context/AuthContext";
 import { APP_CONFIG, FEATURE_FLAGS } from "../config/featureFlags";
 import useTours from "../hooks/useTours";
@@ -86,6 +87,7 @@ const AdminPortal = () => {
   const [status, setStatus] = useState(null);
   const [previewMode, setPreviewMode] = useState("card");
   const [portalUsers, setPortalUsers] = useState([]);
+  const [adminView, setAdminView] = useState("tours");
 
   const canOpenPortal = Boolean(user) && FEATURE_FLAGS.adminTourPortal;
   const isAdminUser = String(userRole || "").toLowerCase() === "admin";
@@ -491,826 +493,864 @@ const AdminPortal = () => {
 
           {status ? <Alert color={status.color}>{status.text}</Alert> : null}
 
-          <Row className="g-4">
-            <Col lg="4">
-              <div className="admin-panel-card">
-                <div className="admin-panel-card__header">
-                  <div>
-                    <h4>Saved tours</h4>
-                    <p>
-                      {loading
-                        ? "Loading from Firebase..."
-                        : `${tours.length} tours available`}
-                    </p>
-                  </div>
-                  <Button color="primary" onClick={handleCreateNew}>
-                    + New tour
-                  </Button>
-                </div>
-
-                {loading ? (
-                  <div className="admin-loader">
-                    <Spinner size="sm" /> Loading tours...
-                  </div>
-                ) : (
-                  <div className="admin-tour-list">
-                    {tours.map((tour) => {
-                      const tourId = tour.id || tour._id;
-                      const isActive = selectedTourId === tourId;
-
-                      return (
-                        <button
-                          key={tourId}
-                          type="button"
-                          className={`admin-tour-item ${isActive ? "active" : ""}`}
-                          onClick={() => handleSelectTour(tour)}
-                        >
-                          <div>
-                            <strong>{tour.title}</strong>
-                            <span>
-                              {tour.city} • {formatPrice(tour.price)}
-                            </span>
-                          </div>
-                          {tour.featured ? (
-                            <Badge color="success">Featured</Badge>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+          <Row className="mb-3">
+            <Col lg="12">
+              <div className="admin-section-nav">
+                <button
+                  type="button"
+                  className={`admin-section-nav__btn ${adminView === "tours" ? "active" : ""}`}
+                  onClick={() => setAdminView("tours")}
+                >
+                  Tour manager
+                </button>
+                <button
+                  type="button"
+                  className={`admin-section-nav__btn ${adminView === "policies" ? "active" : ""}`}
+                  onClick={() => setAdminView("policies")}
+                >
+                  Policy pages
+                </button>
               </div>
             </Col>
+          </Row>
 
-            <Col lg="8">
-              <div className="admin-panel-card">
-                <div className="admin-panel-card__header">
-                  <div>
-                    <h4>{selectedTourId ? "Edit tour" : "Create tour"}</h4>
-                    <p>
-                      Fill the fields below. One saved record updates the user
-                      portal automatically.
-                    </p>
-                  </div>
-                  {selectedTourId ? (
-                    <Button
-                      color="danger"
-                      outline
-                      onClick={() => handleDeleteTour(selectedTourId)}
-                    >
-                      Delete
-                    </Button>
-                  ) : null}
-                </div>
-
-                <Form onSubmit={handleSaveTour}>
-                  <Row className="g-3">
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="title">Tour title</Label>
-                        <Input
-                          id="title"
-                          name="title"
-                          value={form.title}
-                          onChange={handleFieldChange}
-                          required
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="city">City / destination</Label>
-                        <Input
-                          id="city"
-                          name="city"
-                          value={form.city}
-                          onChange={handleFieldChange}
-                          required
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="price">
-                          Price ({APP_CONFIG.currencySymbol})
-                        </Label>
-                        <Input
-                          id="price"
-                          name="price"
-                          type="number"
-                          value={form.price}
-                          onChange={handleFieldChange}
-                          required
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="discountedPrice">
-                          Offer price ({APP_CONFIG.currencySymbol})
-                        </Label>
-                        <Input
-                          id="discountedPrice"
-                          name="discountedPrice"
-                          type="number"
-                          value={form.discountedPrice}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="couplePrice">
-                          Couple price ({APP_CONFIG.currencySymbol})
-                        </Label>
-                        <Input
-                          id="couplePrice"
-                          name="couplePrice"
-                          type="number"
-                          min="0"
-                          value={form.couplePrice}
-                          onChange={handleFieldChange}
-                          placeholder="Price for 2 travellers"
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="coupleDiscountedPrice">
-                          Couple offer price ({APP_CONFIG.currencySymbol})
-                        </Label>
-                        <Input
-                          id="coupleDiscountedPrice"
-                          name="coupleDiscountedPrice"
-                          type="number"
-                          min="0"
-                          value={form.coupleDiscountedPrice}
-                          onChange={handleFieldChange}
-                          placeholder="Optional couple deal price"
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="priceNote">Price note</Label>
-                        <Input
-                          id="priceNote"
-                          name="priceNote"
-                          value={form.priceNote}
-                          onChange={handleFieldChange}
-                          placeholder="1 Person x 1 Trip"
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="3">
-                      <FormGroup>
-                        <Label for="hotelGST">
-                          GST ({APP_CONFIG.currencySymbol})
-                        </Label>
-                        <Input
-                          id="hotelGST"
-                          name="hotelGST"
-                          type="number"
-                          min="0"
-                          value={form.hotelGST}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="3">
-                      <FormGroup>
-                        <Label for="serviceFee">
-                          Service fee ({APP_CONFIG.currencySymbol})
-                        </Label>
-                        <Input
-                          id="serviceFee"
-                          name="serviceFee"
-                          type="number"
-                          min="0"
-                          value={form.serviceFee}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="12">
-                      <div className="admin-coupon-toolbar">
-                        <div>
-                          <h5>Coupon offers</h5>
-                          <p>
-                            Add as many coupon options as needed, then remove
-                            any unused one anytime.
-                          </p>
-                        </div>
-                        <div className="admin-coupon-toolbar__actions">
-                          <Button
-                            type="button"
-                            color="primary"
-                            outline
-                            className="admin-coupon-add-btn"
-                            onClick={handleAddCouponForm}
-                          >
-                            <i className="ri-add-line" aria-hidden="true" />
-                            Add coupon
-                          </Button>
-                        </div>
+          {adminView === "tours" ? (
+            <>
+              <Row className="g-4">
+                <Col lg="4">
+                  <div className="admin-panel-card">
+                    <div className="admin-panel-card__header">
+                      <div>
+                        <h4>Saved tours</h4>
+                        <p>
+                          {loading
+                            ? "Loading from Firebase..."
+                            : `${tours.length} tours available`}
+                        </p>
                       </div>
-                    </Col>
+                      <Button color="primary" onClick={handleCreateNew}>
+                        + New tour
+                      </Button>
+                    </div>
 
-                    {couponForms.map((couponItem, index) => (
-                      <React.Fragment key={`coupon-form-${index}`}>
-                        <Col md="12">
-                          <div className="admin-preview-note admin-coupon-card">
-                            <div className="admin-coupon-card__head">
+                    {loading ? (
+                      <div className="admin-loader">
+                        <Spinner size="sm" /> Loading tours...
+                      </div>
+                    ) : (
+                      <div className="admin-tour-list">
+                        {tours.map((tour) => {
+                          const tourId = tour.id || tour._id;
+                          const isActive = selectedTourId === tourId;
+
+                          return (
+                            <button
+                              key={tourId}
+                              type="button"
+                              className={`admin-tour-item ${isActive ? "active" : ""}`}
+                              onClick={() => handleSelectTour(tour)}
+                            >
                               <div>
-                                <h5>{`Coupon option ${index + 1}`}</h5>
-                                <p>
-                                  Set eligibility, expiry, and offer value for
-                                  this coupon.
-                                </p>
+                                <strong>{tour.title}</strong>
+                                <span>
+                                  {tour.city} • {formatPrice(tour.price)}
+                                </span>
                               </div>
-                              {couponForms.length > 1 ? (
-                                <Button
-                                  type="button"
-                                  color="danger"
-                                  outline
-                                  size="sm"
-                                  className="admin-coupon-remove-btn"
-                                  onClick={() => handleRemoveCouponForm(index)}
-                                >
-                                  <i
-                                    className="ri-delete-bin-line"
-                                    aria-hidden="true"
-                                  />
-                                  Remove
-                                </Button>
+                              {tour.featured ? (
+                                <Badge color="success">Featured</Badge>
                               ) : null}
-                            </div>
-                          </div>
-                        </Col>
-                        <Col md="4">
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </Col>
+
+                <Col lg="8">
+                  <div className="admin-panel-card">
+                    <div className="admin-panel-card__header">
+                      <div>
+                        <h4>{selectedTourId ? "Edit tour" : "Create tour"}</h4>
+                        <p>
+                          Fill the fields below. One saved record updates the
+                          user portal automatically.
+                        </p>
+                      </div>
+                      {selectedTourId ? (
+                        <Button
+                          color="danger"
+                          outline
+                          onClick={() => handleDeleteTour(selectedTourId)}
+                        >
+                          Delete
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    <Form onSubmit={handleSaveTour}>
+                      <Row className="g-3">
+                        <Col md="6">
                           <FormGroup>
-                            <Label for={`couponCode-${index}`}>
-                              Coupon code
-                            </Label>
+                            <Label for="title">Tour title</Label>
                             <Input
-                              id={`couponCode-${index}`}
-                              value={couponItem.code || ""}
-                              onChange={(event) =>
-                                handleCouponChange(
-                                  index,
-                                  "code",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder={
-                                index === 0 ? "SAVE500" : "WELCOME10"
-                              }
+                              id="title"
+                              name="title"
+                              value={form.title}
+                              onChange={handleFieldChange}
+                              required
                             />
                           </FormGroup>
                         </Col>
-                        <Col md="4">
+                        <Col md="6">
                           <FormGroup>
-                            <Label for={`couponType-${index}`}>
-                              Coupon type
-                            </Label>
+                            <Label for="city">City / destination</Label>
                             <Input
-                              id={`couponType-${index}`}
-                              type="select"
-                              value={couponItem.type || "flat"}
-                              onChange={(event) =>
-                                handleCouponChange(
-                                  index,
-                                  "type",
-                                  event.target.value,
-                                )
-                              }
-                            >
-                              <option value="flat">Flat amount</option>
-                              <option value="percent">Percentage</option>
-                            </Input>
+                              id="city"
+                              name="city"
+                              value={form.city}
+                              onChange={handleFieldChange}
+                              required
+                            />
                           </FormGroup>
                         </Col>
-                        <Col md="4">
+                        <Col md="6">
                           <FormGroup>
-                            <Label for={`couponValue-${index}`}>
-                              Coupon value
-                              {(couponItem.type || "flat") === "percent"
-                                ? " (%)"
-                                : ` (${APP_CONFIG.currencySymbol})`}
+                            <Label for="price">
+                              Price ({APP_CONFIG.currencySymbol})
                             </Label>
                             <Input
-                              id={`couponValue-${index}`}
+                              id="price"
+                              name="price"
+                              type="number"
+                              value={form.price}
+                              onChange={handleFieldChange}
+                              required
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="discountedPrice">
+                              Offer price ({APP_CONFIG.currencySymbol})
+                            </Label>
+                            <Input
+                              id="discountedPrice"
+                              name="discountedPrice"
+                              type="number"
+                              value={form.discountedPrice}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="couplePrice">
+                              Couple price ({APP_CONFIG.currencySymbol})
+                            </Label>
+                            <Input
+                              id="couplePrice"
+                              name="couplePrice"
                               type="number"
                               min="0"
-                              value={couponItem.value || ""}
-                              onChange={(event) =>
-                                handleCouponChange(
-                                  index,
-                                  "value",
-                                  event.target.value,
-                                )
-                              }
+                              value={form.couplePrice}
+                              onChange={handleFieldChange}
+                              placeholder="Price for 2 travellers"
                             />
                           </FormGroup>
                         </Col>
-                        <Col md="5">
+                        <Col md="6">
                           <FormGroup>
-                            <Label for={`couponDescription-${index}`}>
-                              Coupon note
+                            <Label for="coupleDiscountedPrice">
+                              Couple offer price ({APP_CONFIG.currencySymbol})
                             </Label>
                             <Input
-                              id={`couponDescription-${index}`}
-                              value={couponItem.description || ""}
-                              onChange={(event) =>
-                                handleCouponChange(
-                                  index,
-                                  "description",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="Apply before paying to unlock extra savings"
+                              id="coupleDiscountedPrice"
+                              name="coupleDiscountedPrice"
+                              type="number"
+                              min="0"
+                              value={form.coupleDiscountedPrice}
+                              onChange={handleFieldChange}
+                              placeholder="Optional couple deal price"
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="priceNote">Price note</Label>
+                            <Input
+                              id="priceNote"
+                              name="priceNote"
+                              value={form.priceNote}
+                              onChange={handleFieldChange}
+                              placeholder="1 Person x 1 Trip"
                             />
                           </FormGroup>
                         </Col>
                         <Col md="3">
                           <FormGroup>
-                            <Label for={`couponTargetUser-${index}`}>
-                              Eligible user
+                            <Label for="hotelGST">
+                              GST ({APP_CONFIG.currencySymbol})
                             </Label>
                             <Input
-                              id={`couponTargetUser-${index}`}
-                              type="select"
-                              value={couponItem.targetUserUid || ""}
-                              onChange={(event) =>
-                                handleCouponChange(
-                                  index,
-                                  "targetUserUid",
-                                  event.target.value,
-                                )
-                              }
-                            >
-                              <option value="">All users</option>
-                              {portalUsers.map((entry) => (
-                                <option key={entry.uid} value={entry.uid}>
-                                  {entry.label}
-                                </option>
-                              ))}
-                            </Input>
+                              id="hotelGST"
+                              name="hotelGST"
+                              type="number"
+                              min="0"
+                              value={form.hotelGST}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="3">
+                          <FormGroup>
+                            <Label for="serviceFee">
+                              Service fee ({APP_CONFIG.currencySymbol})
+                            </Label>
+                            <Input
+                              id="serviceFee"
+                              name="serviceFee"
+                              type="number"
+                              min="0"
+                              value={form.serviceFee}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="12">
+                          <div className="admin-coupon-toolbar">
+                            <div>
+                              <h5>Coupon offers</h5>
+                              <p>
+                                Add as many coupon options as needed, then
+                                remove any unused one anytime.
+                              </p>
+                            </div>
+                            <div className="admin-coupon-toolbar__actions">
+                              <Button
+                                type="button"
+                                color="primary"
+                                outline
+                                className="admin-coupon-add-btn"
+                                onClick={handleAddCouponForm}
+                              >
+                                <i className="ri-add-line" aria-hidden="true" />
+                                Add coupon
+                              </Button>
+                            </div>
+                          </div>
+                        </Col>
+
+                        {couponForms.map((couponItem, index) => (
+                          <React.Fragment key={`coupon-form-${index}`}>
+                            <Col md="12">
+                              <div className="admin-preview-note admin-coupon-card">
+                                <div className="admin-coupon-card__head">
+                                  <div>
+                                    <h5>{`Coupon option ${index + 1}`}</h5>
+                                    <p>
+                                      Set eligibility, expiry, and offer value
+                                      for this coupon.
+                                    </p>
+                                  </div>
+                                  {couponForms.length > 1 ? (
+                                    <Button
+                                      type="button"
+                                      color="danger"
+                                      outline
+                                      size="sm"
+                                      className="admin-coupon-remove-btn"
+                                      onClick={() =>
+                                        handleRemoveCouponForm(index)
+                                      }
+                                    >
+                                      <i
+                                        className="ri-delete-bin-line"
+                                        aria-hidden="true"
+                                      />
+                                      Remove
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </Col>
+                            <Col md="4">
+                              <FormGroup>
+                                <Label for={`couponCode-${index}`}>
+                                  Coupon code
+                                </Label>
+                                <Input
+                                  id={`couponCode-${index}`}
+                                  value={couponItem.code || ""}
+                                  onChange={(event) =>
+                                    handleCouponChange(
+                                      index,
+                                      "code",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder={
+                                    index === 0 ? "SAVE500" : "WELCOME10"
+                                  }
+                                />
+                              </FormGroup>
+                            </Col>
+                            <Col md="4">
+                              <FormGroup>
+                                <Label for={`couponType-${index}`}>
+                                  Coupon type
+                                </Label>
+                                <Input
+                                  id={`couponType-${index}`}
+                                  type="select"
+                                  value={couponItem.type || "flat"}
+                                  onChange={(event) =>
+                                    handleCouponChange(
+                                      index,
+                                      "type",
+                                      event.target.value,
+                                    )
+                                  }
+                                >
+                                  <option value="flat">Flat amount</option>
+                                  <option value="percent">Percentage</option>
+                                </Input>
+                              </FormGroup>
+                            </Col>
+                            <Col md="4">
+                              <FormGroup>
+                                <Label for={`couponValue-${index}`}>
+                                  Coupon value
+                                  {(couponItem.type || "flat") === "percent"
+                                    ? " (%)"
+                                    : ` (${APP_CONFIG.currencySymbol})`}
+                                </Label>
+                                <Input
+                                  id={`couponValue-${index}`}
+                                  type="number"
+                                  min="0"
+                                  value={couponItem.value || ""}
+                                  onChange={(event) =>
+                                    handleCouponChange(
+                                      index,
+                                      "value",
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </FormGroup>
+                            </Col>
+                            <Col md="5">
+                              <FormGroup>
+                                <Label for={`couponDescription-${index}`}>
+                                  Coupon note
+                                </Label>
+                                <Input
+                                  id={`couponDescription-${index}`}
+                                  value={couponItem.description || ""}
+                                  onChange={(event) =>
+                                    handleCouponChange(
+                                      index,
+                                      "description",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="Apply before paying to unlock extra savings"
+                                />
+                              </FormGroup>
+                            </Col>
+                            <Col md="3">
+                              <FormGroup>
+                                <Label for={`couponTargetUser-${index}`}>
+                                  Eligible user
+                                </Label>
+                                <Input
+                                  id={`couponTargetUser-${index}`}
+                                  type="select"
+                                  value={couponItem.targetUserUid || ""}
+                                  onChange={(event) =>
+                                    handleCouponChange(
+                                      index,
+                                      "targetUserUid",
+                                      event.target.value,
+                                    )
+                                  }
+                                >
+                                  <option value="">All users</option>
+                                  {portalUsers.map((entry) => (
+                                    <option key={entry.uid} value={entry.uid}>
+                                      {entry.label}
+                                    </option>
+                                  ))}
+                                </Input>
+                              </FormGroup>
+                            </Col>
+                            <Col md="4">
+                              <FormGroup>
+                                <Label for={`couponExpiryAt-${index}`}>
+                                  Expiry date & time
+                                </Label>
+                                <Input
+                                  id={`couponExpiryAt-${index}`}
+                                  type="datetime-local"
+                                  value={couponItem.expiresAt || ""}
+                                  onChange={(event) =>
+                                    handleCouponChange(
+                                      index,
+                                      "expiresAt",
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+                              </FormGroup>
+                            </Col>
+                            <Col md="12" className="d-flex align-items-end">
+                              <FormGroup check className="admin-checkbox-group">
+                                <Input
+                                  id={`couponActive-${index}`}
+                                  type="checkbox"
+                                  checked={Boolean(couponItem.active)}
+                                  onChange={(event) =>
+                                    handleCouponChange(
+                                      index,
+                                      "active",
+                                      event.target.checked,
+                                    )
+                                  }
+                                />
+                                <Label for={`couponActive-${index}`} check>
+                                  {`Enable coupon ${index + 1} on the user portal`}
+                                </Label>
+                              </FormGroup>
+                            </Col>
+                          </React.Fragment>
+                        ))}
+                        <Col md="4">
+                          <FormGroup>
+                            <Label for="distance">Distance (km)</Label>
+                            <Input
+                              id="distance"
+                              name="distance"
+                              type="number"
+                              value={form.distance}
+                              onChange={handleFieldChange}
+                            />
                           </FormGroup>
                         </Col>
                         <Col md="4">
                           <FormGroup>
-                            <Label for={`couponExpiryAt-${index}`}>
-                              Expiry date & time
-                            </Label>
+                            <Label for="maxGroupSize">Group size</Label>
                             <Input
-                              id={`couponExpiryAt-${index}`}
-                              type="datetime-local"
-                              value={couponItem.expiresAt || ""}
-                              onChange={(event) =>
-                                handleCouponChange(
-                                  index,
-                                  "expiresAt",
-                                  event.target.value,
-                                )
-                              }
+                              id="maxGroupSize"
+                              name="maxGroupSize"
+                              type="number"
+                              value={form.maxGroupSize}
+                              onChange={handleFieldChange}
                             />
                           </FormGroup>
                         </Col>
-                        <Col md="12" className="d-flex align-items-end">
+                        <Col md="4" className="d-flex align-items-end">
                           <FormGroup check className="admin-checkbox-group">
                             <Input
-                              id={`couponActive-${index}`}
+                              id="featured"
+                              name="featured"
                               type="checkbox"
-                              checked={Boolean(couponItem.active)}
-                              onChange={(event) =>
-                                handleCouponChange(
-                                  index,
-                                  "active",
-                                  event.target.checked,
-                                )
-                              }
+                              checked={form.featured}
+                              onChange={handleFieldChange}
                             />
-                            <Label for={`couponActive-${index}`} check>
-                              {`Enable coupon ${index + 1} on the user portal`}
+                            <Label for="featured" check>
+                              Featured on home page
                             </Label>
                           </FormGroup>
                         </Col>
-                      </React.Fragment>
-                    ))}
-                    <Col md="4">
-                      <FormGroup>
-                        <Label for="distance">Distance (km)</Label>
-                        <Input
-                          id="distance"
-                          name="distance"
-                          type="number"
-                          value={form.distance}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="4">
-                      <FormGroup>
-                        <Label for="maxGroupSize">Group size</Label>
-                        <Input
-                          id="maxGroupSize"
-                          name="maxGroupSize"
-                          type="number"
-                          value={form.maxGroupSize}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="4" className="d-flex align-items-end">
-                      <FormGroup check className="admin-checkbox-group">
-                        <Input
-                          id="featured"
-                          name="featured"
-                          type="checkbox"
-                          checked={form.featured}
-                          onChange={handleFieldChange}
-                        />
-                        <Label for="featured" check>
-                          Featured on home page
-                        </Label>
-                      </FormGroup>
-                    </Col>
-                    <Col md="12">
-                      <FormGroup>
-                        <Label for="photo">Cover image URL</Label>
-                        <Input
-                          id="photo"
-                          name="photo"
-                          value={form.photo}
-                          onChange={handleFieldChange}
-                          placeholder="https://..."
-                        />
-                        <small className="text-muted d-block mt-2">
-                          Or upload a cover image directly to Firebase Storage.
-                        </small>
-                        <Input
-                          id="coverUpload"
-                          name="coverUpload"
-                          type="file"
-                          accept="image/*"
-                          className="mt-2"
-                          onChange={handleCoverImageUpload}
-                          disabled={uploadingCover || !user}
-                        />
-                        <small className="text-muted d-block mt-2">
-                          {uploadingCover
-                            ? "Uploading cover image..."
-                            : "PNG, JPG, or WEBP up to 5MB."}
-                        </small>
-                      </FormGroup>
-                    </Col>
-                    <Col md="12">
-                      <FormGroup>
-                        <Label for="address">Address</Label>
-                        <Input
-                          id="address"
-                          name="address"
-                          value={form.address}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="12">
-                      <FormGroup>
-                        <Label for="desc">Description</Label>
-                        <Input
-                          id="desc"
-                          name="desc"
-                          type="textarea"
-                          rows="4"
-                          value={form.desc}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="pickup">Pickup</Label>
-                        <Input
-                          id="pickup"
-                          name="pickup"
-                          value={form.pickup}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="dropoff">Dropoff</Label>
-                        <Input
-                          id="dropoff"
-                          name="dropoff"
-                          value={form.dropoff}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="category">Category</Label>
-                        <Input
-                          id="category"
-                          name="category"
-                          value={form.category}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="duration">Duration</Label>
-                        <Input
-                          id="duration"
-                          name="duration"
-                          value={form.duration}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="startDate">Start date</Label>
-                        <Input
-                          id="startDate"
-                          name="startDate"
-                          type="date"
-                          value={form.startDate}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="endDate">End date</Label>
-                        <Input
-                          id="endDate"
-                          name="endDate"
-                          type="date"
-                          value={form.endDate}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="galleryText">
-                          Gallery URLs (one per line)
-                        </Label>
-                        <Input
-                          id="galleryText"
-                          name="galleryText"
-                          type="textarea"
-                          rows="4"
-                          value={form.galleryText}
-                          onChange={handleFieldChange}
-                        />
-                        <small className="text-muted d-block mt-2">
-                          Or upload one or more gallery images directly to
-                          Firebase Storage.
-                        </small>
-                        <Input
-                          id="galleryUpload"
-                          name="galleryUpload"
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="mt-2"
-                          onChange={handleGalleryImagesUpload}
-                          disabled={uploadingGallery || !user}
-                        />
-                        <small className="text-muted d-block mt-2">
-                          {uploadingGallery
-                            ? "Uploading gallery images..."
-                            : "You can select multiple images at once."}
-                        </small>
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="highlightsText">
-                          Highlights (one per line)
-                        </Label>
-                        <Input
-                          id="highlightsText"
-                          name="highlightsText"
-                          type="textarea"
-                          rows="4"
-                          value={form.highlightsText}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="inclusionsText">
-                          Inclusions (one per line)
-                        </Label>
-                        <Input
-                          id="inclusionsText"
-                          name="inclusionsText"
-                          type="textarea"
-                          rows="4"
-                          value={form.inclusionsText}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="packingText">
-                          Packing list (one per line)
-                        </Label>
-                        <Input
-                          id="packingText"
-                          name="packingText"
-                          type="textarea"
-                          rows="4"
-                          value={form.packingText}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="includeText">
-                          Include list (one per line)
-                        </Label>
-                        <Input
-                          id="includeText"
-                          name="includeText"
-                          type="textarea"
-                          rows="4"
-                          value={form.includeText}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="excludeText">
-                          Exclude list (one per line)
-                        </Label>
-                        <Input
-                          id="excludeText"
-                          name="excludeText"
-                          type="textarea"
-                          rows="4"
-                          value={form.excludeText}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="itineraryText">
-                          Itinerary rows (`Title | Description`)
-                        </Label>
-                        <Input
-                          id="itineraryText"
-                          name="itineraryText"
-                          type="textarea"
-                          rows="5"
-                          value={form.itineraryText}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="policyText">
-                          Policy rows (`Days | Refund | Notes`)
-                        </Label>
-                        <Input
-                          id="policyText"
-                          name="policyText"
-                          type="textarea"
-                          rows="5"
-                          value={form.policyText}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                  </Row>
+                        <Col md="12">
+                          <FormGroup>
+                            <Label for="photo">Cover image URL</Label>
+                            <Input
+                              id="photo"
+                              name="photo"
+                              value={form.photo}
+                              onChange={handleFieldChange}
+                              placeholder="https://..."
+                            />
+                            <small className="text-muted d-block mt-2">
+                              Or upload a cover image directly to Firebase
+                              Storage.
+                            </small>
+                            <Input
+                              id="coverUpload"
+                              name="coverUpload"
+                              type="file"
+                              accept="image/*"
+                              className="mt-2"
+                              onChange={handleCoverImageUpload}
+                              disabled={uploadingCover || !user}
+                            />
+                            <small className="text-muted d-block mt-2">
+                              {uploadingCover
+                                ? "Uploading cover image..."
+                                : "PNG, JPG, or WEBP up to 5MB."}
+                            </small>
+                          </FormGroup>
+                        </Col>
+                        <Col md="12">
+                          <FormGroup>
+                            <Label for="address">Address</Label>
+                            <Input
+                              id="address"
+                              name="address"
+                              value={form.address}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="12">
+                          <FormGroup>
+                            <Label for="desc">Description</Label>
+                            <Input
+                              id="desc"
+                              name="desc"
+                              type="textarea"
+                              rows="4"
+                              value={form.desc}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="pickup">Pickup</Label>
+                            <Input
+                              id="pickup"
+                              name="pickup"
+                              value={form.pickup}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="dropoff">Dropoff</Label>
+                            <Input
+                              id="dropoff"
+                              name="dropoff"
+                              value={form.dropoff}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="category">Category</Label>
+                            <Input
+                              id="category"
+                              name="category"
+                              value={form.category}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="duration">Duration</Label>
+                            <Input
+                              id="duration"
+                              name="duration"
+                              value={form.duration}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="startDate">Start date</Label>
+                            <Input
+                              id="startDate"
+                              name="startDate"
+                              type="date"
+                              value={form.startDate}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="endDate">End date</Label>
+                            <Input
+                              id="endDate"
+                              name="endDate"
+                              type="date"
+                              value={form.endDate}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="galleryText">
+                              Gallery URLs (one per line)
+                            </Label>
+                            <Input
+                              id="galleryText"
+                              name="galleryText"
+                              type="textarea"
+                              rows="4"
+                              value={form.galleryText}
+                              onChange={handleFieldChange}
+                            />
+                            <small className="text-muted d-block mt-2">
+                              Or upload one or more gallery images directly to
+                              Firebase Storage.
+                            </small>
+                            <Input
+                              id="galleryUpload"
+                              name="galleryUpload"
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="mt-2"
+                              onChange={handleGalleryImagesUpload}
+                              disabled={uploadingGallery || !user}
+                            />
+                            <small className="text-muted d-block mt-2">
+                              {uploadingGallery
+                                ? "Uploading gallery images..."
+                                : "You can select multiple images at once."}
+                            </small>
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="highlightsText">
+                              Highlights (one per line)
+                            </Label>
+                            <Input
+                              id="highlightsText"
+                              name="highlightsText"
+                              type="textarea"
+                              rows="4"
+                              value={form.highlightsText}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="inclusionsText">
+                              Inclusions (one per line)
+                            </Label>
+                            <Input
+                              id="inclusionsText"
+                              name="inclusionsText"
+                              type="textarea"
+                              rows="4"
+                              value={form.inclusionsText}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="packingText">
+                              Packing list (one per line)
+                            </Label>
+                            <Input
+                              id="packingText"
+                              name="packingText"
+                              type="textarea"
+                              rows="4"
+                              value={form.packingText}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="includeText">
+                              Include list (one per line)
+                            </Label>
+                            <Input
+                              id="includeText"
+                              name="includeText"
+                              type="textarea"
+                              rows="4"
+                              value={form.includeText}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="excludeText">
+                              Exclude list (one per line)
+                            </Label>
+                            <Input
+                              id="excludeText"
+                              name="excludeText"
+                              type="textarea"
+                              rows="4"
+                              value={form.excludeText}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="itineraryText">
+                              Itinerary rows (`Title | Description`)
+                            </Label>
+                            <Input
+                              id="itineraryText"
+                              name="itineraryText"
+                              type="textarea"
+                              rows="5"
+                              value={form.itineraryText}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label for="policyText">
+                              Policy rows (`Days | Refund | Notes`)
+                            </Label>
+                            <Input
+                              id="policyText"
+                              name="policyText"
+                              type="textarea"
+                              rows="5"
+                              value={form.policyText}
+                              onChange={handleFieldChange}
+                            />
+                          </FormGroup>
+                        </Col>
+                      </Row>
 
-                  <div className="admin-form-actions">
-                    <Button color="primary" type="submit" disabled={saving}>
-                      {saving ? "Saving..." : "Save to Firebase"}
-                    </Button>
-                    <Button
-                      color="secondary"
-                      outline
-                      type="button"
-                      onClick={handleCreateNew}
-                    >
-                      Reset form
-                    </Button>
-                  </div>
-                </Form>
-              </div>
-            </Col>
-          </Row>
-
-          {FEATURE_FLAGS.adminTourPreview && (
-            <Row className="mt-4">
-              <Col lg="12">
-                <div className="admin-panel-card">
-                  <div className="admin-panel-card__header">
-                    <div>
-                      <h4>User portal preview</h4>
-                      <p>
-                        See how the current tour draft will appear to
-                        travellers.
-                      </p>
-                    </div>
-                    <div className="preview-mode-switcher">
-                      {previewModes.map((mode) => (
-                        <Button
-                          key={mode.value}
-                          color={
-                            previewMode === mode.value ? "primary" : "secondary"
-                          }
-                          outline={previewMode !== mode.value}
-                          onClick={() => setPreviewMode(mode.value)}
-                        >
-                          {mode.label}
+                      <div className="admin-form-actions">
+                        <Button color="primary" type="submit" disabled={saving}>
+                          {saving ? "Saving..." : "Save to Firebase"}
                         </Button>
-                      ))}
-                    </div>
+                        <Button
+                          color="secondary"
+                          outline
+                          type="button"
+                          onClick={handleCreateNew}
+                        >
+                          Reset form
+                        </Button>
+                      </div>
+                    </Form>
                   </div>
+                </Col>
+              </Row>
 
-                  {previewMode === "card" ? (
-                    <Row>
-                      <Col md="4">
-                        <TourCard tour={currentPreviewTour} />
-                      </Col>
-                      <Col md="8">
-                        <div className="admin-preview-note">
-                          <h5>{currentPreviewTour.title}</h5>
+              {FEATURE_FLAGS.adminTourPreview && (
+                <Row className="mt-4">
+                  <Col lg="12">
+                    <div className="admin-panel-card">
+                      <div className="admin-panel-card__header">
+                        <div>
+                          <h4>User portal preview</h4>
                           <p>
-                            Featured:{" "}
-                            {currentPreviewTour.featured ? "Yes" : "No"} •
-                            Price: {formatPrice(currentPreviewTour.price)}
-                            {previewDateLabel
-                              ? ` • Date: ${previewDateLabel}`
-                              : ""}
-                          </p>
-                          <p>
-                            {currentPreviewTour.desc ||
-                              "Add a description to preview the tour story here."}
+                            See how the current tour draft will appear to
+                            travellers.
                           </p>
                         </div>
-                      </Col>
-                    </Row>
-                  ) : (
-                    <Row>
-                      <Col lg="8">
-                        <Gallery images={currentPreviewTour.gallery} />
-                        <DetailsCard
-                          pickup={currentPreviewTour.details.pickup}
-                          dropoff={currentPreviewTour.details.dropoff}
-                          category={currentPreviewTour.details.category}
-                          duration={currentPreviewTour.details.duration}
-                          dateRange={previewDateLabel}
-                        />
-                        <InclusionCard items={currentPreviewTour.inclusions} />
-                        <Highlights items={currentPreviewTour.highlights} />
-                        <Itinerary days={currentPreviewTour.itinerary} />
-                        <Packing items={currentPreviewTour.packing} />
-                        <InclusionExclusion
-                          include={currentPreviewTour.includeEx.include}
-                          exclude={currentPreviewTour.includeEx.exclude}
-                        />
-                        <PolicyTable rows={currentPreviewTour.policyRows} />
-                        <GuestReviews
-                          reviews={currentPreviewTour.reviews}
-                          avgRating={currentPreviewTour.avgRating}
-                          title={currentPreviewTour.title}
-                        />
-                      </Col>
-                      <Col lg="4">
-                        <PriceCard
-                          price={currentPreviewTour.price}
-                          discounted={
-                            currentPreviewTour.discountedPrice ||
-                            currentPreviewTour.price
-                          }
-                          title={currentPreviewTour.title}
-                          dateRange={previewDateLabel}
-                          duration={currentPreviewTour.details.duration}
-                          pricing={currentPreviewTour.pricing}
-                          coupon={currentPreviewTour.coupon}
-                          coupons={currentPreviewTour.coupons}
-                        />
-                      </Col>
-                    </Row>
-                  )}
-                </div>
+                        <div className="preview-mode-switcher">
+                          {previewModes.map((mode) => (
+                            <Button
+                              key={mode.value}
+                              color={
+                                previewMode === mode.value
+                                  ? "primary"
+                                  : "secondary"
+                              }
+                              outline={previewMode !== mode.value}
+                              onClick={() => setPreviewMode(mode.value)}
+                            >
+                              {mode.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {previewMode === "card" ? (
+                        <Row>
+                          <Col md="4">
+                            <TourCard tour={currentPreviewTour} />
+                          </Col>
+                          <Col md="8">
+                            <div className="admin-preview-note">
+                              <h5>{currentPreviewTour.title}</h5>
+                              <p>
+                                Featured:{" "}
+                                {currentPreviewTour.featured ? "Yes" : "No"} •
+                                Price: {formatPrice(currentPreviewTour.price)}
+                                {previewDateLabel
+                                  ? ` • Date: ${previewDateLabel}`
+                                  : ""}
+                              </p>
+                              <p>
+                                {currentPreviewTour.desc ||
+                                  "Add a description to preview the tour story here."}
+                              </p>
+                            </div>
+                          </Col>
+                        </Row>
+                      ) : (
+                        <Row>
+                          <Col lg="8">
+                            <Gallery images={currentPreviewTour.gallery} />
+                            <DetailsCard
+                              pickup={currentPreviewTour.details.pickup}
+                              dropoff={currentPreviewTour.details.dropoff}
+                              category={currentPreviewTour.details.category}
+                              duration={currentPreviewTour.details.duration}
+                              dateRange={previewDateLabel}
+                            />
+                            <InclusionCard
+                              items={currentPreviewTour.inclusions}
+                            />
+                            <Highlights items={currentPreviewTour.highlights} />
+                            <Itinerary days={currentPreviewTour.itinerary} />
+                            <Packing items={currentPreviewTour.packing} />
+                            <InclusionExclusion
+                              include={currentPreviewTour.includeEx.include}
+                              exclude={currentPreviewTour.includeEx.exclude}
+                            />
+                            <PolicyTable rows={currentPreviewTour.policyRows} />
+                            <GuestReviews
+                              reviews={currentPreviewTour.reviews}
+                              avgRating={currentPreviewTour.avgRating}
+                              title={currentPreviewTour.title}
+                            />
+                          </Col>
+                          <Col lg="4">
+                            <PriceCard
+                              price={currentPreviewTour.price}
+                              discounted={
+                                currentPreviewTour.discountedPrice ||
+                                currentPreviewTour.price
+                              }
+                              title={currentPreviewTour.title}
+                              dateRange={previewDateLabel}
+                              duration={currentPreviewTour.details.duration}
+                              pricing={currentPreviewTour.pricing}
+                              coupon={currentPreviewTour.coupon}
+                              coupons={currentPreviewTour.coupons}
+                            />
+                          </Col>
+                        </Row>
+                      )}
+                    </div>
+                  </Col>
+                </Row>
+              )}
+            </>
+          ) : (
+            <Row className="g-4">
+              <Col lg="12">
+                <PolicyContentManager user={user} />
               </Col>
             </Row>
           )}

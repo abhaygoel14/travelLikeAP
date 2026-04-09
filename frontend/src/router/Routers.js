@@ -10,6 +10,7 @@ import Tours from "./../pages/Tours";
 import About from "../pages/About";
 import UserDashboard from "../pages/UserDashboard";
 import AdminPortal from "../pages/AdminPortal";
+import PolicyContentPage from "../pages/PolicyContentPage";
 
 const Routers = () => {
   return (
@@ -24,6 +25,18 @@ const Routers = () => {
       <Route path="/users" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<UserDashboard />} />
       <Route path="/admin" element={<AdminPortal />} />
+      <Route
+        path="/terms-and-conditions"
+        element={<PolicyContentPage policyKey="terms" />}
+      />
+      <Route
+        path="/privacy-policy"
+        element={<PolicyContentPage policyKey="privacy" />}
+      />
+      <Route
+        path="/cancellation-refund-policy"
+        element={<PolicyContentPage policyKey="cancellation" />}
+      />
       <Route path="/thank-you" element={<ThankYou />} />
       <Route path="/tours/search" element={<SearchResultList />} />
     </Routes>

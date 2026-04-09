@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import InquiryModal from "./InquiryModal";
 import { AuthContext } from "../../context/AuthContext";
@@ -788,8 +789,12 @@ export default function PriceCard({
           />
           <span>
             I agree to the{" "}
-            <a href="#terms-and-conditions">Terms & Conditions</a> and{" "}
-            <a href="#privacy-policy">Privacy Policy</a>.
+            <Link to="/terms-and-conditions">Terms & Conditions</Link>,{" "}
+            <Link to="/privacy-policy">Privacy Policy</Link>, and{" "}
+            <Link to="/cancellation-refund-policy">
+              Cancellation & Refund Policy
+            </Link>
+            .
           </span>
         </label>
       </div>

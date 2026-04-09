@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap");
+
 .admin-portal-section {
   background: #f8fbff;
 }
@@ -205,9 +207,95 @@
   font-weight: 700 !important;
 }
 
+.admin-section-nav {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.admin-section-nav__btn {
+  border: 1px solid #bfdbfe;
+  background: #fff;
+  color: #1e3a8a;
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem;
+  font-weight: 700;
+}
+
+.admin-section-nav__btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+}
+
+.admin-section-nav--policies {
+  margin-bottom: 1rem;
+}
+
+.admin-policy-editor {
+  position: relative;
+}
+
+.admin-policy-editor__block {
+  margin-top: 0.5rem;
+}
+
+.admin-rich-editor {
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.admin-rich-editor__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fbff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.admin-rich-editor__toolbar button,
+.admin-rich-editor__font {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
+  color: #0f172a;
+}
+
+.admin-rich-editor__canvas {
+  min-height: 280px;
+  padding: 0.95rem 1rem;
+  outline: none;
+  color: #334155;
+  line-height: 1.7;
+}
+
+.admin-rich-editor__canvas:empty::before {
+  content: "Write your policy content here...";
+  color: #94a3b8;
+}
+
 @media (max-width: 768px) {
   .admin-portal-intro,
   .admin-panel-card__header {
     flex-direction: column;
+  }
+
+  .admin-rich-editor {
+    max-height: 60vh;
+  }
+
+  .admin-rich-editor__toolbar {
+    top: 0;
   }
 }
