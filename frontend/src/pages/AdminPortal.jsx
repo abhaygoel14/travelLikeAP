@@ -52,6 +52,16 @@ const previewModes = [
 
 const MAX_TOUR_IMAGE_SIZE = 5 * 1024 * 1024;
 
+const mergeUniqueImageUrls = (...groups) =>
+  Array.from(
+    new Set(
+      groups
+        .flat()
+        .map((item) => String(item || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
 const AdminPortal = () => {
   const { user, userRole } = useContext(AuthContext);
   const { tours, loading, source } = useTours();
@@ -138,13 +148,18 @@ const AdminPortal = () => {
       setUploadingCover(true);
       const imageUrl = await uploadImageToFirebase(file, "cover");
 
-      setForm((prev) => ({
-        ...prev,
-        photo: imageUrl,
-        galleryText: prev.galleryText.includes(imageUrl)
-          ? prev.galleryText
-          : [imageUrl, prev.galleryText].filter(Boolean).join("\n"),
-      }));
+      setForm((prev) => {
+        const existingUrls = prev.galleryText
+          ? prev.galleryText.split(/\r?\n/).filter(Boolean)
+          : [];
+        const mergedUrls = mergeUniqueImageUrls(imageUrl, existingUrls);
+
+        return {
+          ...prev,
+          photo: imageUrl,
+          galleryText: mergedUrls.join("\n"),
+        };
+      });
       setStatus({
         color: "success",
         text: "Cover image uploaded to Firebase Storage.",
@@ -177,14 +192,11 @@ const AdminPortal = () => {
         const existingUrls = prev.galleryText
           ? prev.galleryText.split(/\r?\n/).filter(Boolean)
           : [];
-        const mergedUrls = [
-          ...existingUrls,
-          ...uploadedUrls.filter((url) => !existingUrls.includes(url)),
-        ];
+        const mergedUrls = mergeUniqueImageUrls(existingUrls, uploadedUrls);
 
         return {
           ...prev,
-          photo: prev.photo || uploadedUrls[0] || "",
+          photo: prev.photo || mergedUrls[0] || "",
           galleryText: mergedUrls.join("\n"),
         };
       });

@@ -37,7 +37,14 @@ const parseDelimitedRows = (value = "", width = 2) =>
 
 const getFallbackGallery = (tour = {}) => {
   const gallery = Array.isArray(tour.gallery) ? tour.gallery : [];
-  return [tour.photo, ...gallery].filter(Boolean);
+
+  return Array.from(
+    new Set(
+      [tour.photo, ...gallery]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean),
+    ),
+  );
 };
 
 const getAverageRating = (reviews = []) => {
