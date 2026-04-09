@@ -21,24 +21,31 @@ export default function PriceCard({
   const [couponApplied, setCouponApplied] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showBreakup, setShowBreakup] = useState(true);
+  const [travelerCount, setTravelerCount] = useState(1);
 
-  const listPrice = Number(price || 0);
-  const offerPrice = Number(discounted || price || 0);
+  const safeTravelerCount = Math.max(1, travelerCount);
+  const listPricePerPerson = Number(price || 0);
+  const offerPricePerPerson = Number(discounted || price || 0);
+  const listPrice = listPricePerPerson * safeTravelerCount;
+  const offerPrice = offerPricePerPerson * safeTravelerCount;
 
   const pricingConfig = useMemo(() => {
-    const priceNote =
-      String(pricing?.priceNote || "1 Person x 1 Trip").trim() ||
-      "1 Person x 1 Trip";
-    const hotelGST = Math.max(Number(pricing?.hotelGST || 0), 0);
-    const serviceFee = Math.max(Number(pricing?.serviceFee || 0), 0);
+    const tripLabel = `${safeTravelerCount} Adult${safeTravelerCount > 1 ? "s" : ""} x 1 Trip`;
+    const basePriceNote =
+      String(pricing?.priceNote || "Per person price").trim() ||
+      "Per person price";
+    const hotelGST =
+      Math.max(Number(pricing?.hotelGST || 0), 0) * safeTravelerCount;
+    const serviceFee =
+      Math.max(Number(pricing?.serviceFee || 0), 0) * safeTravelerCount;
 
     return {
-      priceNote,
+      priceNote: `${basePriceNote} • ${tripLabel}`,
       hotelGST,
       serviceFee,
       taxesAndFees: hotelGST + serviceFee,
     };
-  }, [pricing]);
+  }, [pricing, safeTravelerCount]);
 
   const discountPercent = useMemo(() => {
     if (!listPrice || offerPrice >= listPrice) {
@@ -134,6 +141,14 @@ export default function PriceCard({
     });
   };
 
+  const handleTravelerDecrease = () => {
+    setTravelerCount((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleTravelerIncrease = () => {
+    setTravelerCount((prev) => Math.min(10, prev + 1));
+  };
+
   const handlePrimaryAction = () => {
     if (!acceptedTerms) {
       setCouponMessage({
@@ -191,7 +206,7 @@ export default function PriceCard({
       <div className="price-new">
         {formatPrice(totalPayable)}
         <span>
-          {pricingConfig.taxesAndFees || couponApplied
+          {pricingConfig.taxesAndFees || couponApplied || safeTravelerCount > 1
             ? "Total to Pay"
             : "Per Person"}
         </span>
@@ -210,6 +225,37 @@ export default function PriceCard({
           <i className="ri-time-line"></i>
           Fast response
         </span>
+      </div>
+
+      <div className="traveler-picker" aria-label="Select number of adults">
+        <div className="traveler-picker-copy">
+          <strong>Adults</strong>
+          <span>Aged 18+ • Max 10 travellers</span>
+        </div>
+
+        <div className="traveler-stepper">
+          <button
+            type="button"
+            className="traveler-stepper-btn"
+            onClick={handleTravelerDecrease}
+            disabled={safeTravelerCount <= 1}
+            aria-label="Decrease adults"
+          >
+            <i className="ri-subtract-line"></i>
+          </button>
+          <span className="traveler-stepper-value" aria-live="polite">
+            {safeTravelerCount}
+          </span>
+          <button
+            type="button"
+            className="traveler-stepper-btn"
+            onClick={handleTravelerIncrease}
+            disabled={safeTravelerCount >= 10}
+            aria-label="Increase adults"
+          >
+            <i className="ri-add-line"></i>
+          </button>
+        </div>
       </div>
 
       {couponApplied && availableCouponDiscount ? (
