@@ -544,7 +544,7 @@ export default function PriceCard({
             {propertyDiscount ? (
               <div className="price-row discount">
                 <div className="price-row-main">
-                  <span className="price-row-label">Discount by Property</span>
+                  <span className="price-row-label">Discount Applied</span>
                 </div>
                 <strong className="price-row-value">
                   - {formatPrice(propertyDiscount)}
