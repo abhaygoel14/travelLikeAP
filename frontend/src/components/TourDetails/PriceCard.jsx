@@ -256,7 +256,6 @@ export default function PriceCard({
   );
   const availableCouponDiscount = appliedCoupon?.discountValue || 0;
   const couponSummary = bannerCoupon?.summary || "";
-  const couponValueLabel = bannerCoupon?.valueLabel || "";
   const couponEmptyState = useMemo(() => {
     if (!allCouponConfigs.length) {
       return {
