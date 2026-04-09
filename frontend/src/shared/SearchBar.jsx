@@ -1,94 +1,165 @@
-import React, { useRef } from 'react'
-import './search-bar.css'
-import { Col, Form, FormGroup } from 'reactstrap'
-import { BASE_URL } from '../utils/config'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from "react";
+import "./search-bar.css";
+import { Col, Form, FormGroup } from "reactstrap";
+import { useLocation, useNavigate } from "react-router-dom";
 
-const SearchBar = () => {
-   const locationRef = useRef('')
-   const distanceRef = useRef(0)
-   const startDateRef = useRef('')
-   const endDateRef = useRef('')
-   const navigate = useNavigate()
+const SearchBar = ({
+  summaryText = "",
+  hasActiveFilters = false,
+  onClear = null,
+}) => {
+  const navigate = useNavigate();
+  const currentLocation = useLocation();
+  const queryParams = useMemo(
+    () => new URLSearchParams(currentLocation.search),
+    [currentLocation.search],
+  );
+  const [filters, setFilters] = useState({
+    city: queryParams.get("city") || "",
+    startDate: queryParams.get("startDate") || "",
+    endDate: queryParams.get("endDate") || "",
+  });
 
-   const searchHandler = async() => {
-      const location = locationRef.current.value
-      const distance = distanceRef.current.value
-      const startDate = startDateRef.current.value
-      const endDate = endDateRef.current.value
+  useEffect(() => {
+    setFilters({
+      city: queryParams.get("city") || "",
+      startDate: queryParams.get("startDate") || "",
+      endDate: queryParams.get("endDate") || "",
+    });
+  }, [queryParams]);
 
-      if (
-         location === '' ||
-         distance === '' ||
-         startDate === '' ||
-         endDate === ''
-      ) {
-         return alert('All fields are required!')
-      }
+  const updateField = (field, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
-      if (new Date(startDate) > new Date(endDate)) {
-         return alert('Start date must be before end date')
-      }
+  const searchHandler = (event) => {
+    if (event) {
+      event.preventDefault();
+    }
 
-      const params = new URLSearchParams({
-         city: location,
-         distance,
-         startDate,
-         endDate,
-         
-      })
+    if (
+      filters.startDate &&
+      filters.endDate &&
+      new Date(filters.startDate) > new Date(filters.endDate)
+    ) {
+      window.alert("Start date must be before end date");
+      return;
+    }
 
-      const res = await fetch(`${BASE_URL}/tours/search/getTourBySearch?${params.toString()}`)
+    const params = new URLSearchParams();
 
-      if(!res.ok) return alert('Something went wrong')
+    if (String(filters.city || "").trim()) {
+      params.set("city", String(filters.city).trim());
+    }
 
-      const result = await res.json()
+    if (filters.startDate) {
+      params.set("startDate", filters.startDate);
+    }
 
-      navigate(`/tours/search?${params.toString()}`, { state: result.data })
-   }
+    if (filters.endDate) {
+      params.set("endDate", filters.endDate);
+    }
 
-   return <Col lg="12">
+    const nextQuery = params.toString();
+    navigate(nextQuery ? `/tours/search?${nextQuery}` : "/tours/search");
+  };
+
+  const handleClear = () => {
+    setFilters({ city: "", startDate: "", endDate: "" });
+
+    if (typeof onClear === "function") {
+      onClear();
+      return;
+    }
+
+    navigate("/tours/search");
+  };
+
+  return (
+    <Col lg="12">
       <div className="search__bar">
-         <Form className='d-flex align-items-center gap-4'>
-            <FormGroup className='d-flex gap-3 form__group form__group-fast'>
-               <span><i class='ri-map-pin-line'></i></span>
-               <div>
-                  <h6>Location</h6>
-                  <input type="text" placeholder='Where are you going?' ref={locationRef} />
-               </div>
-            </FormGroup>
-            <FormGroup className='d-flex gap-3 form__group form__group-fast'>
-               <span><i class='ri-map-pin-time-line'></i></span>
-               <div>
-                  <h6>Distance</h6>
-                  <input type="number" placeholder='Distance k/m' ref={distanceRef} />
-               </div>
-            </FormGroup>
-
-            <FormGroup className='d-flex gap-3 form__group'>
-               <span><i class='ri-calendar-line'></i></span>
-               <div>
-                  <h6>Start Date</h6>
-                  <input type="date" ref={startDateRef} />
-               </div>
-            </FormGroup>
-
-            <FormGroup className='d-flex gap-3 form__group'>
-               <span><i class='ri-calendar-line'></i></span>
-               <div>
-                  <h6>End Date</h6>
-                  <input type="date" ref={endDateRef} />
-               </div>
-            </FormGroup>
-
-            
-
-            <span className='search__icon' type='submit' onClick={searchHandler}>
-               <i class='ri-search-line'></i>
+        <Form
+          className="d-flex align-items-center gap-4"
+          onSubmit={searchHandler}
+        >
+          <FormGroup className="d-flex gap-3 form__group form__group-fast">
+            <span>
+              <i className="ri-map-pin-line"></i>
             </span>
-         </Form>
-      </div>
-   </Col>
-}
+            <div>
+              <h6>Location</h6>
+              <input
+                type="text"
+                placeholder="Where are you going?"
+                value={filters.city}
+                onChange={(event) => updateField("city", event.target.value)}
+              />
+            </div>
+          </FormGroup>
 
-export default SearchBar
+          <FormGroup className="d-flex gap-3 form__group form__group-fast">
+            <span>
+              <i className="ri-calendar-line"></i>
+            </span>
+            <div>
+              <h6>Start Date</h6>
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(event) =>
+                  updateField("startDate", event.target.value)
+                }
+              />
+            </div>
+          </FormGroup>
+
+          <FormGroup className="d-flex gap-3 form__group">
+            <span>
+              <i className="ri-calendar-check-line"></i>
+            </span>
+            <div>
+              <h6>End Date</h6>
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(event) => updateField("endDate", event.target.value)}
+              />
+            </div>
+          </FormGroup>
+
+          <button
+            className="search__icon"
+            type="submit"
+            aria-label="Search tours"
+          >
+            <i className="ri-search-line"></i>
+          </button>
+        </Form>
+
+        {summaryText || hasActiveFilters ? (
+          <div className="search__bar-meta">
+            {summaryText ? (
+              <p className="search__bar-message">{summaryText}</p>
+            ) : (
+              <span />
+            )}
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                className="search__clear-btn"
+                onClick={handleClear}
+              >
+                Clear filters
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </Col>
+  );
+};
+
+export default SearchBar;
