@@ -8,7 +8,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { FEATURE_FLAGS } from "../../config/featureFlags";
 
 const baseNavLinks = [
-  { path: "/home", display: "Home" },
+  { path: "/", display: "Home" },
   { path: "/about", display: "About" },
   { path: "/tours", display: "Tours" },
 ];
@@ -74,7 +74,7 @@ const Header = () => {
       <Container>
         <Row>
           <div className="nav__wrapper d-flex align-items-center justify-content-between">
-            <Link to="/home" className="logo">
+            <Link to="/" className="logo">
               <img src={Logo} alt="Travel Like AP logo" />
               <span className="brand-text">
                 <span className="brand-text__main">TRAVEL LIKE</span>

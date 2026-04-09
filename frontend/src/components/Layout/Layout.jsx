@@ -7,6 +7,8 @@ import { PageRouteSkeleton } from "../../shared/TravelLoader";
 const Layout = () => {
   const location = useLocation();
   const [routeLoading, setRouteLoading] = useState(true);
+  const isConstructionPage =
+    location.pathname === "/under-construction" || location.pathname === "/";
 
   useEffect(() => {
     setRouteLoading(true);
@@ -20,7 +22,7 @@ const Layout = () => {
 
   return (
     <>
-      <Header />
+      {!isConstructionPage && <Header />}
       {routeLoading ? (
         <PageRouteSkeleton pathname={location.pathname} />
       ) : (

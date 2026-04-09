@@ -20,6 +20,11 @@ const connectLinks = [
     icon: "ri-youtube-line",
     href: "https://www.youtube.com/@travellikeap",
   },
+  {
+    label: "Email",
+    icon: "ri-mail-send-line",
+    href: "mailto:travellikeap@gmail.com?subject=Travel%20Like%20AP%20Enquiry",
+  },
 ];
 
 const policyLinks = [

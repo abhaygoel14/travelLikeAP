@@ -1,8 +1,8 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ThankYou from "../pages/ThankYou";
-import Home from "./../pages/Home";
 import Login from "./../pages/Login";
+import Home from "./../pages/Home";
 import Register from "./../pages/Register";
 import SearchResultList from "./../pages/SearchResultList";
 import TourDetails from "./../pages/TourDetails";
@@ -11,12 +11,14 @@ import About from "../pages/About";
 import UserDashboard from "../pages/UserDashboard";
 import AdminPortal from "../pages/AdminPortal";
 import PolicyContentPage from "../pages/PolicyContentPage";
+import UnderConstruction from "../pages/UnderConstruction";
 
 const Routers = () => {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/home" />} />
+      <Route path="/" element={<Navigate to="/under-construction" replace />} />
       <Route path="/home" element={<Home />} />
+      <Route path="/under-construction" element={<UnderConstruction />} />
       <Route path="/about" element={<About />} />
       <Route path="/tours" element={<Tours />} />
       <Route path="/tours/:id" element={<TourDetails />} />
