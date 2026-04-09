@@ -22,22 +22,43 @@ export default function PriceCard({
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showBreakup, setShowBreakup] = useState(true);
   const [travelerCount, setTravelerCount] = useState(1);
+  const [travelerMode, setTravelerMode] = useState("adult");
 
   const safeTravelerCount = Math.max(1, travelerCount);
+  const isCoupleMode = travelerMode === "couple";
+  const billingUnits = isCoupleMode ? 2 : safeTravelerCount;
   const listPricePerPerson = Number(price || 0);
   const offerPricePerPerson = Number(discounted || price || 0);
-  const listPrice = listPricePerPerson * safeTravelerCount;
-  const offerPrice = offerPricePerPerson * safeTravelerCount;
+  const configuredCouplePrice = Math.max(Number(pricing?.couplePrice || 0), 0);
+  const configuredCoupleOfferPrice = Math.max(
+    Number(pricing?.coupleDiscountedPrice || 0),
+    0,
+  );
+  const hasCustomCouplePricing =
+    configuredCouplePrice > 0 || configuredCoupleOfferPrice > 0;
+  const coupleListPrice = configuredCouplePrice || listPricePerPerson * 2;
+  const coupleOfferPrice =
+    configuredCoupleOfferPrice ||
+    configuredCouplePrice ||
+    offerPricePerPerson * 2;
+  const listPrice = isCoupleMode
+    ? coupleListPrice
+    : listPricePerPerson * safeTravelerCount;
+  const offerPrice = isCoupleMode
+    ? coupleOfferPrice
+    : offerPricePerPerson * safeTravelerCount;
 
   const pricingConfig = useMemo(() => {
-    const tripLabel = `${safeTravelerCount} Adult${safeTravelerCount > 1 ? "s" : ""} x 1 Trip`;
+    const tripLabel = isCoupleMode
+      ? "1 Couple x 1 Trip"
+      : `${safeTravelerCount} Adult${safeTravelerCount > 1 ? "s" : ""} x 1 Trip`;
     const basePriceNote =
-      String(pricing?.priceNote || "Per person price").trim() ||
-      "Per person price";
-    const hotelGST =
-      Math.max(Number(pricing?.hotelGST || 0), 0) * safeTravelerCount;
+      String(
+        isCoupleMode ? "Couple traveller price" : pricing?.priceNote,
+      ).trim() || "Per person price";
+    const hotelGST = Math.max(Number(pricing?.hotelGST || 0), 0) * billingUnits;
     const serviceFee =
-      Math.max(Number(pricing?.serviceFee || 0), 0) * safeTravelerCount;
+      Math.max(Number(pricing?.serviceFee || 0), 0) * billingUnits;
 
     return {
       priceNote: `${basePriceNote} • ${tripLabel}`,
@@ -45,7 +66,7 @@ export default function PriceCard({
       serviceFee,
       taxesAndFees: hotelGST + serviceFee,
     };
-  }, [pricing, safeTravelerCount]);
+  }, [billingUnits, isCoupleMode, pricing, safeTravelerCount]);
 
   const discountPercent = useMemo(() => {
     if (!listPrice || offerPrice >= listPrice) {
@@ -193,9 +214,11 @@ export default function PriceCard({
 
       <div className="price-head">
         <div>
-          <p className="price-kicker">Starting From</p>
-          {price && Number(discounted) < Number(price) ? (
-            <div className="price-old">{formatPrice(price)}</div>
+          <p className="price-kicker">
+            {isCoupleMode ? "Couple Package" : "Starting From"}
+          </p>
+          {listPrice && offerPrice < listPrice ? (
+            <div className="price-old">{formatPrice(listPrice)}</div>
           ) : null}
         </div>
         {discountPercent ? (
@@ -208,7 +231,9 @@ export default function PriceCard({
         <span>
           {pricingConfig.taxesAndFees || couponApplied || safeTravelerCount > 1
             ? "Total to Pay"
-            : "Per Person"}
+            : isCoupleMode
+              ? "Per Couple"
+              : "Per Person"}
         </span>
       </div>
 
@@ -227,35 +252,62 @@ export default function PriceCard({
         </span>
       </div>
 
-      <div className="traveler-picker" aria-label="Select number of adults">
+      <div className="traveler-mode-switch" aria-label="Choose traveller type">
+        <button
+          type="button"
+          className={`traveler-mode-btn ${!isCoupleMode ? "active" : ""}`}
+          onClick={() => setTravelerMode("adult")}
+        >
+          Adult
+        </button>
+        <button
+          type="button"
+          className={`traveler-mode-btn ${isCoupleMode ? "active" : ""}`}
+          onClick={() => setTravelerMode("couple")}
+        >
+          Couple
+        </button>
+      </div>
+
+      <div className="traveler-picker" aria-label="Traveller selection">
         <div className="traveler-picker-copy">
-          <strong>Adults</strong>
-          <span>Aged 18+ • Max 10 travellers</span>
+          <strong>{isCoupleMode ? "Couple Travellers" : "Adults"}</strong>
+          <span>
+            {isCoupleMode
+              ? hasCustomCouplePricing
+                ? "2 travellers together • special couple price"
+                : "2 travellers together • auto-calculated from 2 adults"
+              : "Aged 18+ • Max 10 travellers"}
+          </span>
         </div>
 
-        <div className="traveler-stepper">
-          <button
-            type="button"
-            className="traveler-stepper-btn"
-            onClick={handleTravelerDecrease}
-            disabled={safeTravelerCount <= 1}
-            aria-label="Decrease adults"
-          >
-            <i className="ri-subtract-line"></i>
-          </button>
-          <span className="traveler-stepper-value" aria-live="polite">
-            {safeTravelerCount}
-          </span>
-          <button
-            type="button"
-            className="traveler-stepper-btn"
-            onClick={handleTravelerIncrease}
-            disabled={safeTravelerCount >= 10}
-            aria-label="Increase adults"
-          >
-            <i className="ri-add-line"></i>
-          </button>
-        </div>
+        {isCoupleMode ? (
+          <div className="traveler-static-chip">1 Couple</div>
+        ) : (
+          <div className="traveler-stepper">
+            <button
+              type="button"
+              className="traveler-stepper-btn"
+              onClick={handleTravelerDecrease}
+              disabled={safeTravelerCount <= 1}
+              aria-label="Decrease adults"
+            >
+              <i className="ri-subtract-line"></i>
+            </button>
+            <span className="traveler-stepper-value" aria-live="polite">
+              {safeTravelerCount}
+            </span>
+            <button
+              type="button"
+              className="traveler-stepper-btn"
+              onClick={handleTravelerIncrease}
+              disabled={safeTravelerCount >= 10}
+              aria-label="Increase adults"
+            >
+              <i className="ri-add-line"></i>
+            </button>
+          </div>
+        )}
       </div>
 
       {couponApplied && availableCouponDiscount ? (
@@ -343,7 +395,7 @@ export default function PriceCard({
 
                   <div className="fee-info-popover">
                     <div>
-                      <span>Hotel GST</span>
+                      <span>GST</span>
                       <strong>{formatPrice(pricingConfig.hotelGST)}</strong>
                     </div>
                     <div>

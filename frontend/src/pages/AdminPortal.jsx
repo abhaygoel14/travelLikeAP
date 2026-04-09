@@ -466,6 +466,38 @@ const AdminPortal = () => {
                     </Col>
                     <Col md="6">
                       <FormGroup>
+                        <Label for="couplePrice">
+                          Couple price ({APP_CONFIG.currencySymbol})
+                        </Label>
+                        <Input
+                          id="couplePrice"
+                          name="couplePrice"
+                          type="number"
+                          min="0"
+                          value={form.couplePrice}
+                          onChange={handleFieldChange}
+                          placeholder="Price for 2 travellers"
+                        />
+                      </FormGroup>
+                    </Col>
+                    <Col md="6">
+                      <FormGroup>
+                        <Label for="coupleDiscountedPrice">
+                          Couple offer price ({APP_CONFIG.currencySymbol})
+                        </Label>
+                        <Input
+                          id="coupleDiscountedPrice"
+                          name="coupleDiscountedPrice"
+                          type="number"
+                          min="0"
+                          value={form.coupleDiscountedPrice}
+                          onChange={handleFieldChange}
+                          placeholder="Optional couple deal price"
+                        />
+                      </FormGroup>
+                    </Col>
+                    <Col md="6">
+                      <FormGroup>
                         <Label for="priceNote">Price note</Label>
                         <Input
                           id="priceNote"
@@ -479,7 +511,7 @@ const AdminPortal = () => {
                     <Col md="3">
                       <FormGroup>
                         <Label for="hotelGST">
-                          Hotel GST ({APP_CONFIG.currencySymbol})
+                          GST ({APP_CONFIG.currencySymbol})
                         </Label>
                         <Input
                           id="hotelGST"

@@ -44,6 +44,21 @@ const TourDetails = () => {
     [id, tours],
   );
 
+  const images = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (selectedTour?.gallery?.length
+            ? selectedTour.gallery
+            : [selectedTour?.photo]
+          )
+            .map((image) => String(image || "").trim())
+            .filter(Boolean),
+        ),
+      ),
+    [selectedTour],
+  );
+
   useEffect(() => {
     const currentTourId = String(selectedTour?.id || selectedTour?._id || "");
     const savedWishlist = Array.isArray(user?.wishlist) ? user.wishlist : [];
@@ -84,9 +99,6 @@ const TourDetails = () => {
     );
   }
 
-  const images = selectedTour.gallery?.length
-    ? selectedTour.gallery
-    : [selectedTour.photo].filter(Boolean);
   const details = selectedTour.details || {};
   const includeEx = selectedTour.includeEx || { include: [], exclude: [] };
   const tourDateLabel = formatTourDateRange(
@@ -206,9 +218,11 @@ const TourDetails = () => {
   return (
     <section className="tour-details-page">
       <Container>
-        <div className="td-gallery-first">
-          <Gallery images={images} />
-        </div>
+        {images.length ? (
+          <div className="td-gallery-first">
+            <Gallery images={images} />
+          </div>
+        ) : null}
 
         <Row className="g-4 align-items-start mb-4">
           <Col lg="8">

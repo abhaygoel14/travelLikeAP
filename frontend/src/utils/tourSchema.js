@@ -122,6 +122,8 @@ export const createEmptyTour = () => ({
     priceNote: "1 Person x 1 Trip",
     hotelGST: 0,
     serviceFee: 0,
+    couplePrice: 0,
+    coupleDiscountedPrice: 0,
   },
   coupon: {
     code: "",
@@ -205,6 +207,14 @@ export const normalizeTourRecord = (tour = {}, fallbackId = "") => {
     tour.pricing?.serviceFee ?? tour.serviceFee,
     0,
   );
+  const resolvedCouplePrice = toNumber(
+    tour.pricing?.couplePrice ?? tour.couplePrice,
+    0,
+  );
+  const resolvedCoupleDiscountedPrice = toNumber(
+    tour.pricing?.coupleDiscountedPrice ?? tour.coupleDiscountedPrice,
+    resolvedCouplePrice,
+  );
 
   return {
     ...createEmptyTour(),
@@ -231,6 +241,8 @@ export const normalizeTourRecord = (tour = {}, fallbackId = "") => {
       priceNote: resolvedPriceNote || "1 Person x 1 Trip",
       hotelGST: resolvedHotelGST,
       serviceFee: resolvedServiceFee,
+      couplePrice: resolvedCouplePrice,
+      coupleDiscountedPrice: resolvedCoupleDiscountedPrice,
     },
     coupon: {
       code: resolvedCouponCode,
@@ -356,6 +368,10 @@ export const tourToFormState = (tour = createEmptyTour()) => {
     priceNote: normalizedTour.pricing.priceNote,
     hotelGST: String(normalizedTour.pricing.hotelGST || ""),
     serviceFee: String(normalizedTour.pricing.serviceFee || ""),
+    couplePrice: String(normalizedTour.pricing.couplePrice || ""),
+    coupleDiscountedPrice: String(
+      normalizedTour.pricing.coupleDiscountedPrice || "",
+    ),
     couponCode: normalizedTour.coupon.code,
     couponType: normalizedTour.coupon.type,
     couponValue: String(normalizedTour.coupon.value || ""),
@@ -409,6 +425,8 @@ export const formStateToTour = (formState = {}) => {
       priceNote: String(formState.priceNote || "1 Person x 1 Trip").trim(),
       hotelGST: toNumber(formState.hotelGST, 0),
       serviceFee: toNumber(formState.serviceFee, 0),
+      couplePrice: toNumber(formState.couplePrice, 0),
+      coupleDiscountedPrice: toNumber(formState.coupleDiscountedPrice, 0),
     },
     coupon: {
       code: String(formState.couponCode || "")
