@@ -685,10 +685,13 @@ export default function PriceCard({
                     </p>
 
                     <div className="coupon-meta-tags">
-                      {couponItem.targetUserUid && !shouldHideSpecialCouponText ? (
+                      {couponItem.targetUserUid &&
+                      !shouldHideSpecialCouponText ? (
                         <span className="coupon-meta-chip">
                           {couponItem.targetUserLabel &&
-                          !/especially for you/i.test(couponItem.targetUserLabel)
+                          !/especially for you/i.test(
+                            couponItem.targetUserLabel,
+                          )
                             ? `For ${couponItem.targetUserLabel}`
                             : "Especially for you"}
                         </span>

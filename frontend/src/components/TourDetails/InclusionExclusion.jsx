@@ -10,7 +10,10 @@ export default function InclusionExclusion({ include = [], exclude = [] }) {
         <h5>Included</h5>
         <div className="highlights-grid ie-grid">
           {includedItems.map((it, i) => (
-            <div key={`include-${i}`} className="highlight-item ie-chip include">
+            <div
+              key={`include-${i}`}
+              className="highlight-item ie-chip include"
+            >
               {it}
             </div>
           ))}
@@ -20,7 +23,10 @@ export default function InclusionExclusion({ include = [], exclude = [] }) {
         <h5>Excluded</h5>
         <div className="highlights-grid ie-grid">
           {excludedItems.map((it, i) => (
-            <div key={`exclude-${i}`} className="highlight-item ie-chip exclude">
+            <div
+              key={`exclude-${i}`}
+              className="highlight-item ie-chip exclude"
+            >
               {it}
             </div>
           ))}

@@ -208,7 +208,8 @@ const AdminPortal = () => {
         ...(nextCouponList[index] || {}),
       };
 
-      nextCoupon[field] = field === "code" ? String(value || "").toUpperCase() : value;
+      nextCoupon[field] =
+        field === "code" ? String(value || "").toUpperCase() : value;
 
       if (field === "targetUserUid") {
         const selectedUser = portalUsers.find((entry) => entry.uid === value);
@@ -236,14 +237,15 @@ const AdminPortal = () => {
 
   const handleRemoveCouponForm = (index) => {
     setForm((prev) => {
-      const nextCouponList = (Array.isArray(prev.couponList)
-        ? prev.couponList
-        : []
+      const nextCouponList = (
+        Array.isArray(prev.couponList) ? prev.couponList : []
       ).filter((_, couponIndex) => couponIndex !== index);
 
       return {
         ...prev,
-        couponList: nextCouponList.length ? nextCouponList : [createEmptyCouponForm()],
+        couponList: nextCouponList.length
+          ? nextCouponList
+          : [createEmptyCouponForm()],
       };
     });
   };
@@ -695,8 +697,8 @@ const AdminPortal = () => {
                         <div>
                           <h5>Coupon offers</h5>
                           <p>
-                            Add as many coupon options as needed, then remove any
-                            unused one anytime.
+                            Add as many coupon options as needed, then remove
+                            any unused one anytime.
                           </p>
                         </div>
                         <div className="admin-coupon-toolbar__actions">
@@ -747,26 +749,40 @@ const AdminPortal = () => {
                         </Col>
                         <Col md="4">
                           <FormGroup>
-                            <Label for={`couponCode-${index}`}>Coupon code</Label>
+                            <Label for={`couponCode-${index}`}>
+                              Coupon code
+                            </Label>
                             <Input
                               id={`couponCode-${index}`}
                               value={couponItem.code || ""}
                               onChange={(event) =>
-                                handleCouponChange(index, "code", event.target.value)
+                                handleCouponChange(
+                                  index,
+                                  "code",
+                                  event.target.value,
+                                )
                               }
-                              placeholder={index === 0 ? "SAVE500" : "WELCOME10"}
+                              placeholder={
+                                index === 0 ? "SAVE500" : "WELCOME10"
+                              }
                             />
                           </FormGroup>
                         </Col>
                         <Col md="4">
                           <FormGroup>
-                            <Label for={`couponType-${index}`}>Coupon type</Label>
+                            <Label for={`couponType-${index}`}>
+                              Coupon type
+                            </Label>
                             <Input
                               id={`couponType-${index}`}
                               type="select"
                               value={couponItem.type || "flat"}
                               onChange={(event) =>
-                                handleCouponChange(index, "type", event.target.value)
+                                handleCouponChange(
+                                  index,
+                                  "type",
+                                  event.target.value,
+                                )
                               }
                             >
                               <option value="flat">Flat amount</option>
@@ -788,7 +804,11 @@ const AdminPortal = () => {
                               min="0"
                               value={couponItem.value || ""}
                               onChange={(event) =>
-                                handleCouponChange(index, "value", event.target.value)
+                                handleCouponChange(
+                                  index,
+                                  "value",
+                                  event.target.value,
+                                )
                               }
                             />
                           </FormGroup>
@@ -864,7 +884,11 @@ const AdminPortal = () => {
                               type="checkbox"
                               checked={Boolean(couponItem.active)}
                               onChange={(event) =>
-                                handleCouponChange(index, "active", event.target.checked)
+                                handleCouponChange(
+                                  index,
+                                  "active",
+                                  event.target.checked,
+                                )
                               }
                             />
                             <Label for={`couponActive-${index}`} check>
