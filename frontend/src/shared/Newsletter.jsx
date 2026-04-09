@@ -8,17 +8,17 @@ const connectLinks = [
   {
     label: "WhatsApp",
     icon: "ri-whatsapp-line",
-    href: "https://wa.me/?text=Hi%20Travel%20Like%20AP",
+    href: "https://wa.me/916360316790?text=Hi%20Travel%20Like%20AP",
+  },
+  {
+    label: "Instagram",
+    icon: "ri-instagram-line",
+    href: "https://www.instagram.com/travellikeap/",
   },
   {
     label: "YouTube",
     icon: "ri-youtube-line",
-    href: "https://www.youtube.com/results?search_query=Travel+Like+AP",
-  },
-  {
-    label: "Email",
-    icon: "ri-mail-send-line",
-    href: "mailto:?subject=Travel%20Like%20AP%20Enquiry",
+    href: "https://www.youtube.com/@travellikeap",
   },
 ];
 
