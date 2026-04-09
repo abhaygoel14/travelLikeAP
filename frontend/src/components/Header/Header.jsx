@@ -75,9 +75,10 @@ const Header = () => {
         <Row>
           <div className="nav__wrapper d-flex align-items-center justify-content-between">
             <Link to="/home" className="logo">
-              <img src={Logo} alt="logo" />
+              <img src={Logo} alt="Travel Like AP logo" />
               <span className="brand-text">
-                Travel Like<span className="brand-text__ap"> AP</span>
+                <span className="brand-text__main">TRAVEL LIKE</span>
+                <span className="brand-text__ap">AP</span>
               </span>
             </Link>
 

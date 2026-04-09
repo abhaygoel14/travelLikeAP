@@ -42,22 +42,25 @@
 
 .brand-text {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: flex-start;
+  gap: 0.18rem;
   text-align: left;
   font-family: "Gagalin", "AP Parallel", "Montserrat", sans-serif;
   font-size: 1.35rem;
   font-weight: 700;
-  color: var(--heading-color) !important;
   letter-spacing: 0.04em;
   line-height: 1;
   white-space: nowrap;
   text-transform: none;
 }
 
+.brand-text__main {
+  color: #000000 !important;
+}
+
 .brand-text__ap {
-  color: var(--primary-color) !important;
-  margin-left: 0.18rem;
+  color: #f60606 !important;
 }
 
 .navigation {
