@@ -22,7 +22,7 @@ const Header = () => {
 
   const navLinks = useMemo(() => {
     const links = user
-      ? [...baseNavLinks, { path: "/users", display: "Traveller" }]
+      ? [...baseNavLinks, { path: "/dashboard", display: "Traveller" }]
       : [...baseNavLinks];
 
     if (canOpenAdminPortal) {
