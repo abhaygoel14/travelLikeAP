@@ -197,6 +197,21 @@ export default function PriceCard({
         </span>
       </div>
 
+      <div className="price-trust-row" aria-label="Booking benefits">
+        <span>
+          <i className="ri-shield-check-line"></i>
+          Secure booking
+        </span>
+        <span>
+          <i className="ri-customer-service-2-line"></i>
+          Quick support
+        </span>
+        <span>
+          <i className="ri-time-line"></i>
+          Fast response
+        </span>
+      </div>
+
       {couponApplied && availableCouponDiscount ? (
         <p className="price-coupon-savings">
           Coupon applied • {formatPrice(availableCouponDiscount)} discount given
@@ -411,7 +426,7 @@ export default function PriceCard({
             disabled={!couponConfig.active}
             aria-label="Apply coupon"
           >
-            <span>{couponApplied ? "APPLIED" : "APPLY"}</span>
+            <span>{couponApplied ? "Applied" : "Apply Coupon"}</span>
           </button>
         </div>
 

@@ -363,6 +363,33 @@
   font-size: 0.9rem;
   font-weight: 400;
 }
+
+.price-trust-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.price-trust-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-content: center;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--heading-color);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.price-trust-row span i {
+  color: var(--primary-color);
+  font-size: 0.95rem;
+}
+
 .price-actions {
   display: flex;
   gap: 0.5rem;
@@ -726,10 +753,16 @@
   font-size: 0.8rem;
 }
 
+.td-detail-tile > div {
+  min-width: 0;
+}
+
 .td-detail-tile strong {
+  display: block;
   color: var(--heading-color);
   font-size: 0.95rem;
   line-height: 1.45;
+  word-break: break-word;
 }
 
 .td-section-nav {
@@ -740,7 +773,13 @@
 }
 
 .td-section-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  text-align: center;
   text-decoration: none;
+  white-space: nowrap;
   color: var(--heading-color);
   border: 1px solid var(--muted-border);
   border-radius: 999px;
@@ -1691,15 +1730,104 @@
     position: static;
   }
 
-  .td-reviews-head,
-  .td-review-snapshot-top,
-  .td-location-card-row {
+  .td-reviews-head {
     flex-direction: column;
     align-items: flex-start;
   }
 
+  .td-review-snapshot-top,
+  .td-location-card-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .td-review-snapshot-copy,
+  .td-location-copy {
+    flex: 1;
+  }
+
   .td-review-link {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .td-hero-copy,
+  .td-details-shell,
+  .td-overview-card,
+  .td-reviews-card,
+  .td-support-card,
+  .td-mobile-price-slot .td-price-card {
+    border-radius: 18px;
+  }
+
+  .td-mobile-price-slot {
+    margin-bottom: 1rem;
+  }
+
+  .td-title-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .td-tour-title {
+    font-size: clamp(1.45rem, 6vw, 1.9rem);
+  }
+
+  .td-wishlist-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .td-meta-pill {
+    width: 100%;
+    justify-content: flex-start;
+    border-radius: 14px;
+  }
+
+  .td-section-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .td-section-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .td-section-nav a {
+    min-height: 44px;
+    border-radius: 14px;
+    padding: 0.6rem 0.85rem;
+  }
+
+  .td-mobile-price-slot .td-price-card {
+    margin-top: 0;
+    padding: 1rem;
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+  }
+
+  .price-head {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
+  .price-new {
+    font-size: clamp(1.5rem, 6vw, 1.9rem);
+  }
+
+  .price-trust-row {
+    grid-template-columns: 1fr;
+  }
+
+  .td-price-card .primary__btn,
+  .td-price-card .secondary__btn {
+    min-height: 48px;
   }
 }
 
@@ -1715,11 +1843,80 @@
   }
 
   .price-offer-banner,
-  .coupon-input-row,
   .consent-check,
   .price-breakup-header,
   .price-row {
     flex-direction: column;
+  }
+
+  .td-section-nav {
+    padding-bottom: 0.3rem;
+  }
+
+  .td-review-snapshot-top,
+  .td-location-card-row,
+  .td-review-user {
+    gap: 0.6rem;
+  }
+
+  .td-review-score-badge {
+    min-width: 58px;
+    height: 48px;
+    border-radius: 14px;
+    font-size: 1.2rem;
+  }
+
+  .td-review-link,
+  .td-review-rating {
+    margin-left: auto;
+  }
+
+  .coupon-option {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .coupon-option-value {
+    justify-self: flex-start;
+  }
+
+  .coupon-input-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.45rem;
+    overflow: visible;
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+  }
+
+  .coupon-input-row input {
+    border: 1px solid var(--muted-border);
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .coupon-apply-btn {
+    width: 100%;
+    min-height: 46px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(
+      90deg,
+      var(--primary-color),
+      var(--secondary-color)
+    );
+    color: #fff;
+    padding: 0.8rem 1rem;
+  }
+
+  .coupon-apply-btn.applied {
+    background: rgba(34, 197, 94, 0.14);
+    color: #15803d;
+  }
+
+  .coupon-apply-btn:disabled {
+    background: rgba(148, 163, 184, 0.45);
+    color: #fff;
   }
 
   .price-row-value {

@@ -193,6 +193,16 @@ const TourDetails = () => {
       : []),
   ];
 
+  const priceCardProps = {
+    price: selectedTour.price,
+    discounted: selectedTour.discountedPrice || selectedTour.price,
+    title: selectedTour.title,
+    dateRange: tourDateLabel,
+    duration: details.duration,
+    pricing: selectedTour.pricing,
+    coupon: selectedTour.coupon,
+  };
+
   return (
     <section className="tour-details-page">
       <Container>
@@ -255,6 +265,10 @@ const TourDetails = () => {
                   </span>
                 ))}
               </div>
+            </div>
+
+            <div className="td-mobile-price-slot d-lg-none">
+              <PriceCard {...priceCardProps} />
             </div>
 
             <DetailsCard
@@ -333,15 +347,9 @@ const TourDetails = () => {
                 address={selectedTour.address}
               />
 
-              <PriceCard
-                price={selectedTour.price}
-                discounted={selectedTour.discountedPrice || selectedTour.price}
-                title={selectedTour.title}
-                dateRange={tourDateLabel}
-                duration={details.duration}
-                pricing={selectedTour.pricing}
-                coupon={selectedTour.coupon}
-              />
+              <div className="d-none d-lg-block">
+                <PriceCard {...priceCardProps} />
+              </div>
 
               <div className="td-card td-support-card">
                 <h4>Need help planning?</h4>
