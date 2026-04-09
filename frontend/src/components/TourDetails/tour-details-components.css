@@ -101,7 +101,6 @@
 
 /* List items with tick / cross icons */
 .td-inclusion ul li,
-.td-packing ul li,
 .td-details ul li {
   position: relative;
   padding-left: 32px;
@@ -111,7 +110,6 @@
   transition: color 180ms ease;
 }
 .td-inclusion ul li::before,
-.td-packing ul li::before,
 .td-details ul li::before {
   content: "\2713"; /* check */
   position: absolute;
@@ -279,11 +277,11 @@
 }
 .ie-item {
   list-style: none;
-  padding: 0.5rem 0;
+  padding: 0.7rem 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  border-bottom: 1px dashed var(--muted-border);
+  gap: 0.8rem;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.35);
 }
 .ie-item:last-child {
   border-bottom: none;
@@ -292,38 +290,34 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  margin-right: 0.6rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex: 0 0 28px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
 }
 .ie-badge.include {
-  background: linear-gradient(
-    180deg,
-    rgba(34, 197, 94, 0.14),
-    rgba(34, 197, 94, 0.06)
-  );
+  background: rgba(34, 197, 94, 0.12);
   color: var(--success-color);
-  box-shadow: 0 3px 8px rgba(34, 197, 94, 0.04);
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.08);
 }
 .ie-badge.exclude {
-  background: linear-gradient(
-    180deg,
-    rgba(239, 68, 68, 0.12),
-    rgba(239, 68, 68, 0.04)
-  );
+  background: rgba(239, 68, 68, 0.1);
   color: var(--danger-color);
-  box-shadow: 0 3px 8px rgba(239, 68, 68, 0.03);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.08);
 }
-.ie-item span {
+.ie-label {
   flex: 1;
-  color: var(--text-color);
+  color: var(--heading-color);
+  font-size: 0.98rem;
+  line-height: 1.45;
 }
 
 /* small animation when hovering an item */
 .ie-item:hover {
-  transform: translateX(6px);
+  transform: translateX(2px);
   transition: transform 160ms ease;
 }
 
@@ -951,7 +945,36 @@
   border: 1px solid var(--muted-border);
   background: rgba(15, 23, 42, 0.03);
   border-radius: 12px;
-  padding: 0.8rem 0.9rem 0.8rem 2.6rem;
+}
+
+.td-packing ul li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.85rem 1rem;
+}
+
+.td-pack-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex: 0 0 30px;
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success-color);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.08);
+}
+
+.td-pack-label {
+  flex: 1;
+  color: var(--heading-color);
+  font-size: 0.98rem;
+  line-height: 1.45;
 }
 
 .td-table-wrap {

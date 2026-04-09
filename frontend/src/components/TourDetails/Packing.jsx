@@ -6,7 +6,12 @@ export default function Packing({ items = [] }) {
       <h4>Things to Pack</h4>
       <ul>
         {items.map((it, i) => (
-          <li key={i}>{it}</li>
+          <li key={i}>
+            <span className="td-pack-badge" aria-hidden="true">
+              ✓
+            </span>
+            <span className="td-pack-label">{it}</span>
+          </li>
         ))}
       </ul>
     </div>

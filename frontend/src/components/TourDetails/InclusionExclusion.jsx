@@ -12,7 +12,7 @@ export default function InclusionExclusion({ include = [], exclude = [] }) {
           {include.map((it, i) => (
             <li key={i} className="ie-item">
               <span className="ie-badge include">✓</span>
-              <span>{it}</span>
+              <span className="ie-label">{it}</span>
             </li>
           ))}
         </ul>
@@ -26,7 +26,7 @@ export default function InclusionExclusion({ include = [], exclude = [] }) {
           {exclude.map((it, i) => (
             <li key={i} className="ie-item">
               <span className="ie-badge exclude">×</span>
-              <span>{it}</span>
+              <span className="ie-label">{it}</span>
             </li>
           ))}
         </ul>
