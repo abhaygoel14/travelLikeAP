@@ -795,7 +795,7 @@ const UserDashboard = () => {
           price: relatedTour?.price || trip.budget || 99,
         };
       }),
-    [featuredPlan, galleryStrip, recommendedPlaces, sideTrips],
+    [featuredPlan, galleryStrip, recommendedPlaces, sideTrips, tours],
   );
 
   const storyItems = useMemo(
