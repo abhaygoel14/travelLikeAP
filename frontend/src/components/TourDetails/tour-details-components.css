@@ -25,7 +25,9 @@
 .td-gallery-main img.is-loaded,
 .td-gallery-tile img.is-loading,
 .td-gallery-tile img.is-loaded {
-  transition: opacity 220ms ease, transform 0.3s ease;
+  transition:
+    opacity 220ms ease,
+    transform 0.3s ease;
 }
 .td-gallery-skeleton {
   position: absolute;

@@ -1,5 +1,11 @@
 import "./tour-details-components.css";
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { motion } from "framer-motion";
 
 export default function Gallery({ images = [] }) {
