@@ -213,6 +213,7 @@ const TourDetails = () => {
     duration: details.duration,
     pricing: selectedTour.pricing,
     coupon: selectedTour.coupon,
+    coupons: selectedTour.coupons,
   };
 
   return (

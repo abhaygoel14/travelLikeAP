@@ -12,6 +12,7 @@ import {
   Row,
   Spinner,
 } from "reactstrap";
+import { get as getDbValue, ref as dbRef } from "firebase/database";
 import {
   getDownloadURL,
   ref as storageRef,
@@ -33,7 +34,7 @@ import PriceCard from "../components/TourDetails/PriceCard";
 import { AuthContext } from "../context/AuthContext";
 import { APP_CONFIG, FEATURE_FLAGS } from "../config/featureFlags";
 import useTours from "../hooks/useTours";
-import { storage } from "../utils/firebaseConfig";
+import { realtimeDb, storage } from "../utils/firebaseConfig";
 import {
   createEmptyTour,
   deleteTourFromFirebase,
@@ -62,6 +63,17 @@ const mergeUniqueImageUrls = (...groups) =>
     ),
   );
 
+const createEmptyCouponForm = () => ({
+  code: "",
+  type: "flat",
+  value: "",
+  description: "",
+  active: false,
+  expiresAt: "",
+  targetUserUid: "",
+  targetUserLabel: "",
+});
+
 const AdminPortal = () => {
   const { user, userRole } = useContext(AuthContext);
   const { tours, loading, source } = useTours();
@@ -73,6 +85,7 @@ const AdminPortal = () => {
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [status, setStatus] = useState(null);
   const [previewMode, setPreviewMode] = useState("card");
+  const [portalUsers, setPortalUsers] = useState([]);
 
   const canOpenPortal = Boolean(user) && FEATURE_FLAGS.adminTourPortal;
   const isAdminUser = String(userRole || "").toLowerCase() === "admin";
@@ -82,6 +95,10 @@ const AdminPortal = () => {
     currentPreviewTour.endDate,
     currentPreviewTour.details?.dateRange,
   );
+  const couponForms =
+    Array.isArray(form.couponList) && form.couponList.length
+      ? form.couponList
+      : [createEmptyCouponForm()];
 
   useEffect(() => {
     if (!selectedTourId && !isCreatingNew && tours.length) {
@@ -91,13 +108,144 @@ const AdminPortal = () => {
     }
   }, [isCreatingNew, selectedTourId, tours]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadPortalUsers = async () => {
+      if (!realtimeDb) {
+        if (active) {
+          setPortalUsers([]);
+        }
+        return;
+      }
+
+      try {
+        const snapshot = await getDbValue(dbRef(realtimeDb, "users"));
+
+        if (!active) {
+          return;
+        }
+
+        if (!snapshot.exists()) {
+          setPortalUsers([]);
+          return;
+        }
+
+        const nextUsers = Object.entries(snapshot.val())
+          .map(([uid, entry]) => {
+            const fullName = [entry?.firstName, entry?.lastName]
+              .map((item) => String(item || "").trim())
+              .filter(Boolean)
+              .join(" ");
+            const displayName =
+              fullName ||
+              String(
+                entry?.displayName ||
+                  entry?.username ||
+                  String(entry?.email || "").split("@")[0] ||
+                  "Traveler",
+              ).trim();
+            const email = String(entry?.email || "").trim();
+
+            return {
+              uid,
+              label: email ? `${displayName} (${email})` : displayName,
+            };
+          })
+          .sort((left, right) => left.label.localeCompare(right.label));
+
+        setPortalUsers(nextUsers);
+      } catch (error) {
+        console.warn("Unable to load portal users:", error);
+        if (active) {
+          setPortalUsers([]);
+        }
+      }
+    };
+
+    loadPortalUsers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const handleFieldChange = ({ target }) => {
     const { name, value, type, checked } = target;
+
+    if (
+      name === "couponOneTargetUserUid" ||
+      name === "couponTwoTargetUserUid"
+    ) {
+      const labelField =
+        name === "couponOneTargetUserUid"
+          ? "couponOneTargetUserLabel"
+          : "couponTwoTargetUserLabel";
+      const selectedUser = portalUsers.find((entry) => entry.uid === value);
+
+      setForm((prev) => ({
+        ...prev,
+        [name]: value,
+        [labelField]: selectedUser?.label || "",
+      }));
+      return;
+    }
 
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  const handleCouponChange = (index, field, value) => {
+    setForm((prev) => {
+      const nextCouponList =
+        Array.isArray(prev.couponList) && prev.couponList.length
+          ? [...prev.couponList]
+          : [createEmptyCouponForm()];
+      const nextCoupon = {
+        ...createEmptyCouponForm(),
+        ...(nextCouponList[index] || {}),
+      };
+
+      nextCoupon[field] = field === "code" ? String(value || "").toUpperCase() : value;
+
+      if (field === "targetUserUid") {
+        const selectedUser = portalUsers.find((entry) => entry.uid === value);
+        nextCoupon.targetUserLabel = selectedUser?.label || "";
+      }
+
+      nextCouponList[index] = nextCoupon;
+
+      return {
+        ...prev,
+        couponList: nextCouponList,
+      };
+    });
+  };
+
+  const handleAddCouponForm = () => {
+    setForm((prev) => ({
+      ...prev,
+      couponList: [
+        ...(Array.isArray(prev.couponList) ? prev.couponList : []),
+        createEmptyCouponForm(),
+      ],
+    }));
+  };
+
+  const handleRemoveCouponForm = (index) => {
+    setForm((prev) => {
+      const nextCouponList = (Array.isArray(prev.couponList)
+        ? prev.couponList
+        : []
+      ).filter((_, couponIndex) => couponIndex !== index);
+
+      return {
+        ...prev,
+        couponList: nextCouponList.length ? nextCouponList : [createEmptyCouponForm()],
+      };
+    });
   };
 
   const uploadImageToFirebase = async (file, folder) => {
@@ -216,16 +364,20 @@ const AdminPortal = () => {
   };
 
   const handleSelectTour = (tour) => {
+    const nextForm = tourToFormState(tour);
+
     setIsCreatingNew(false);
     setSelectedTourId(tour.id || tour._id);
-    setForm(tourToFormState(tour));
+    setForm(nextForm);
     setStatus(null);
   };
 
   const handleCreateNew = () => {
+    const nextForm = tourToFormState(createEmptyTour());
+
     setIsCreatingNew(true);
     setSelectedTourId("");
-    setForm(tourToFormState(createEmptyTour()));
+    setForm(nextForm);
     setStatus({ color: "info", text: "Started a fresh tour draft." });
   };
 
@@ -538,77 +690,190 @@ const AdminPortal = () => {
                         />
                       </FormGroup>
                     </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="couponCode">Coupon code</Label>
-                        <Input
-                          id="couponCode"
-                          name="couponCode"
-                          value={form.couponCode}
-                          onChange={handleFieldChange}
-                          placeholder="SAVE500"
-                        />
-                      </FormGroup>
+                    <Col md="12">
+                      <div className="admin-coupon-toolbar">
+                        <div>
+                          <h5>Coupon offers</h5>
+                          <p>
+                            Add as many coupon options as needed, then remove any
+                            unused one anytime.
+                          </p>
+                        </div>
+                        <div className="admin-coupon-toolbar__actions">
+                          <Button
+                            type="button"
+                            color="primary"
+                            outline
+                            className="admin-coupon-add-btn"
+                            onClick={handleAddCouponForm}
+                          >
+                            <i className="ri-add-line" aria-hidden="true" />
+                            Add coupon
+                          </Button>
+                        </div>
+                      </div>
                     </Col>
-                    <Col md="3">
-                      <FormGroup>
-                        <Label for="couponType">Coupon type</Label>
-                        <Input
-                          id="couponType"
-                          name="couponType"
-                          type="select"
-                          value={form.couponType}
-                          onChange={handleFieldChange}
-                        >
-                          <option value="flat">Flat amount</option>
-                          <option value="percent">Percentage</option>
-                        </Input>
-                      </FormGroup>
-                    </Col>
-                    <Col md="3">
-                      <FormGroup>
-                        <Label for="couponValue">
-                          Coupon value
-                          {form.couponType === "percent"
-                            ? " (%)"
-                            : ` (${APP_CONFIG.currencySymbol})`}
-                        </Label>
-                        <Input
-                          id="couponValue"
-                          name="couponValue"
-                          type="number"
-                          min="0"
-                          value={form.couponValue}
-                          onChange={handleFieldChange}
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="6">
-                      <FormGroup>
-                        <Label for="couponDescription">Coupon note</Label>
-                        <Input
-                          id="couponDescription"
-                          name="couponDescription"
-                          value={form.couponDescription}
-                          onChange={handleFieldChange}
-                          placeholder="Apply before paying to unlock extra savings"
-                        />
-                      </FormGroup>
-                    </Col>
-                    <Col md="4" className="d-flex align-items-end">
-                      <FormGroup check className="admin-checkbox-group">
-                        <Input
-                          id="couponActive"
-                          name="couponActive"
-                          type="checkbox"
-                          checked={form.couponActive}
-                          onChange={handleFieldChange}
-                        />
-                        <Label for="couponActive" check>
-                          Coupon active on user portal
-                        </Label>
-                      </FormGroup>
-                    </Col>
+
+                    {couponForms.map((couponItem, index) => (
+                      <React.Fragment key={`coupon-form-${index}`}>
+                        <Col md="12">
+                          <div className="admin-preview-note admin-coupon-card">
+                            <div className="admin-coupon-card__head">
+                              <div>
+                                <h5>{`Coupon option ${index + 1}`}</h5>
+                                <p>
+                                  Set eligibility, expiry, and offer value for
+                                  this coupon.
+                                </p>
+                              </div>
+                              {couponForms.length > 1 ? (
+                                <Button
+                                  type="button"
+                                  color="danger"
+                                  outline
+                                  size="sm"
+                                  className="admin-coupon-remove-btn"
+                                  onClick={() => handleRemoveCouponForm(index)}
+                                >
+                                  <i
+                                    className="ri-delete-bin-line"
+                                    aria-hidden="true"
+                                  />
+                                  Remove
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </Col>
+                        <Col md="4">
+                          <FormGroup>
+                            <Label for={`couponCode-${index}`}>Coupon code</Label>
+                            <Input
+                              id={`couponCode-${index}`}
+                              value={couponItem.code || ""}
+                              onChange={(event) =>
+                                handleCouponChange(index, "code", event.target.value)
+                              }
+                              placeholder={index === 0 ? "SAVE500" : "WELCOME10"}
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="4">
+                          <FormGroup>
+                            <Label for={`couponType-${index}`}>Coupon type</Label>
+                            <Input
+                              id={`couponType-${index}`}
+                              type="select"
+                              value={couponItem.type || "flat"}
+                              onChange={(event) =>
+                                handleCouponChange(index, "type", event.target.value)
+                              }
+                            >
+                              <option value="flat">Flat amount</option>
+                              <option value="percent">Percentage</option>
+                            </Input>
+                          </FormGroup>
+                        </Col>
+                        <Col md="4">
+                          <FormGroup>
+                            <Label for={`couponValue-${index}`}>
+                              Coupon value
+                              {(couponItem.type || "flat") === "percent"
+                                ? " (%)"
+                                : ` (${APP_CONFIG.currencySymbol})`}
+                            </Label>
+                            <Input
+                              id={`couponValue-${index}`}
+                              type="number"
+                              min="0"
+                              value={couponItem.value || ""}
+                              onChange={(event) =>
+                                handleCouponChange(index, "value", event.target.value)
+                              }
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="5">
+                          <FormGroup>
+                            <Label for={`couponDescription-${index}`}>
+                              Coupon note
+                            </Label>
+                            <Input
+                              id={`couponDescription-${index}`}
+                              value={couponItem.description || ""}
+                              onChange={(event) =>
+                                handleCouponChange(
+                                  index,
+                                  "description",
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="Apply before paying to unlock extra savings"
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="3">
+                          <FormGroup>
+                            <Label for={`couponTargetUser-${index}`}>
+                              Eligible user
+                            </Label>
+                            <Input
+                              id={`couponTargetUser-${index}`}
+                              type="select"
+                              value={couponItem.targetUserUid || ""}
+                              onChange={(event) =>
+                                handleCouponChange(
+                                  index,
+                                  "targetUserUid",
+                                  event.target.value,
+                                )
+                              }
+                            >
+                              <option value="">All users</option>
+                              {portalUsers.map((entry) => (
+                                <option key={entry.uid} value={entry.uid}>
+                                  {entry.label}
+                                </option>
+                              ))}
+                            </Input>
+                          </FormGroup>
+                        </Col>
+                        <Col md="4">
+                          <FormGroup>
+                            <Label for={`couponExpiryAt-${index}`}>
+                              Expiry date & time
+                            </Label>
+                            <Input
+                              id={`couponExpiryAt-${index}`}
+                              type="datetime-local"
+                              value={couponItem.expiresAt || ""}
+                              onChange={(event) =>
+                                handleCouponChange(
+                                  index,
+                                  "expiresAt",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </FormGroup>
+                        </Col>
+                        <Col md="12" className="d-flex align-items-end">
+                          <FormGroup check className="admin-checkbox-group">
+                            <Input
+                              id={`couponActive-${index}`}
+                              type="checkbox"
+                              checked={Boolean(couponItem.active)}
+                              onChange={(event) =>
+                                handleCouponChange(index, "active", event.target.checked)
+                              }
+                            />
+                            <Label for={`couponActive-${index}`} check>
+                              {`Enable coupon ${index + 1} on the user portal`}
+                            </Label>
+                          </FormGroup>
+                        </Col>
+                      </React.Fragment>
+                    ))}
                     <Col md="4">
                       <FormGroup>
                         <Label for="distance">Distance (km)</Label>
@@ -1016,6 +1281,7 @@ const AdminPortal = () => {
                           duration={currentPreviewTour.details.duration}
                           pricing={currentPreviewTour.pricing}
                           coupon={currentPreviewTour.coupon}
+                          coupons={currentPreviewTour.coupons}
                         />
                       </Col>
                     </Row>

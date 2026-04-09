@@ -1,7 +1,34 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import InquiryModal from "./InquiryModal";
+import { AuthContext } from "../../context/AuthContext";
 import { formatPrice } from "../../utils/tourSchema";
+
+const formatCouponCountdown = (expiryTime, now) => {
+  if (!expiryTime || expiryTime <= now) {
+    return "";
+  }
+
+  const totalSeconds = Math.max(Math.floor((expiryTime - now) / 1000), 0);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m left`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m left`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s left`;
+  }
+
+  return `${seconds}s left`;
+};
 
 export default function PriceCard({
   price = 199,
@@ -11,6 +38,7 @@ export default function PriceCard({
   duration = "",
   pricing = null,
   coupon = null,
+  coupons = [],
 }) {
   const [open, setOpen] = useState(false);
   const [couponInput, setCouponInput] = useState("");
@@ -18,11 +46,20 @@ export default function PriceCard({
     tone: "",
     text: "",
   });
+  const { user } = useContext(AuthContext);
   const [couponApplied, setCouponApplied] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showBreakup, setShowBreakup] = useState(true);
   const [travelerCount, setTravelerCount] = useState(1);
   const [travelerMode, setTravelerMode] = useState("adult");
+  const [selectedCouponCode, setSelectedCouponCode] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  const normalizedUserEmail = String(user?.email || "")
+    .trim()
+    .toLowerCase();
+  const shouldHideSpecialCouponText = normalizedUserEmail.includes("abhay");
 
   const safeTravelerCount = Math.max(1, travelerCount);
   const isCoupleMode = travelerMode === "couple";
@@ -76,69 +113,201 @@ export default function PriceCard({
     return Math.round(((listPrice - offerPrice) / listPrice) * 100);
   }, [listPrice, offerPrice]);
 
-  const couponConfig = useMemo(() => {
-    const code = String(coupon?.code || "")
-      .trim()
-      .toUpperCase();
-    const type =
-      String(coupon?.type || "flat").toLowerCase() === "percent"
-        ? "percent"
-        : "flat";
-    const value = Number(coupon?.value || 0);
-    const description = String(coupon?.description || "").trim();
-    const active = Boolean(coupon?.active && code && value > 0);
+  const allCouponConfigs = useMemo(() => {
+    const sourceCoupons =
+      Array.isArray(coupons) && coupons.length
+        ? coupons
+        : coupon
+          ? [coupon]
+          : [];
 
-    return { code, type, value, description, active };
-  }, [coupon]);
+    return sourceCoupons
+      .map((item, index) => {
+        const code = String(item?.code || "")
+          .trim()
+          .toUpperCase();
+        const type =
+          String(item?.type || "flat").toLowerCase() === "percent"
+            ? "percent"
+            : "flat";
+        const value = Number(item?.value || 0);
+        const description = String(item?.description || "").trim();
+        const active = Boolean(item?.active && code && value > 0);
+        const expiresAt = String(
+          item?.expiresAt || item?.expiryAt || "",
+        ).trim();
+        const expiryTime = expiresAt ? new Date(expiresAt).getTime() : 0;
+        const expired =
+          Number.isFinite(expiryTime) && expiryTime > 0
+            ? expiryTime <= now
+            : false;
+        const targetUserUid = String(
+          item?.targetUserUid || item?.eligibleUserUid || "",
+        ).trim();
+        const targetUserLabel = String(
+          item?.targetUserLabel || item?.eligibleUserLabel || "",
+        ).trim();
+        const isEligibleUser =
+          !targetUserUid || String(user?.uid || "").trim() === targetUserUid;
 
-  const availableCouponDiscount = useMemo(() => {
-    if (!couponConfig.active || !offerPrice) {
-      return 0;
+        if (
+          !code &&
+          !description &&
+          value <= 0 &&
+          !active &&
+          !expiresAt &&
+          !targetUserUid
+        ) {
+          return null;
+        }
+
+        const discountValue =
+          type === "percent"
+            ? Math.min(Math.round((offerPrice * value) / 100), offerPrice)
+            : Math.min(value, offerPrice);
+
+        return {
+          id: `${code || "coupon"}-${index}`,
+          code,
+          type,
+          value,
+          description,
+          active,
+          expiresAt,
+          expiryTime,
+          expired,
+          targetUserUid,
+          targetUserLabel,
+          isEligibleUser,
+          discountValue,
+          summary:
+            type === "percent" ? `${value}% OFF` : `${formatPrice(value)} OFF`,
+          valueLabel:
+            type === "percent"
+              ? `${value}%`
+              : formatPrice(discountValue || value),
+          countdownLabel: formatCouponCountdown(expiryTime, now),
+        };
+      })
+      .filter(Boolean);
+  }, [coupon, coupons, now, offerPrice, user?.uid]);
+
+  const availableCoupons = useMemo(
+    () =>
+      allCouponConfigs.filter(
+        (item) => item.active && !item.expired && item.isEligibleUser,
+      ),
+    [allCouponConfigs],
+  );
+
+  useEffect(() => {
+    if (!allCouponConfigs.some((item) => item.expiryTime)) {
+      return undefined;
     }
 
-    if (couponConfig.type === "percent") {
-      return Math.min(
-        Math.round((offerPrice * couponConfig.value) / 100),
-        offerPrice,
-      );
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [allCouponConfigs]);
+
+  useEffect(() => {
+    if (!availableCoupons.length) {
+      setSelectedCouponCode("");
+      setAppliedCouponCode("");
+      setCouponApplied(false);
+      return;
     }
 
-    return Math.min(couponConfig.value, offerPrice);
-  }, [couponConfig, offerPrice]);
+    if (!availableCoupons.some((item) => item.code === selectedCouponCode)) {
+      setSelectedCouponCode(availableCoupons[0].code);
+    }
+  }, [availableCoupons, selectedCouponCode]);
 
+  useEffect(() => {
+    if (
+      couponApplied &&
+      appliedCouponCode &&
+      !availableCoupons.some((item) => item.code === appliedCouponCode)
+    ) {
+      setCouponApplied(false);
+      setAppliedCouponCode("");
+      setCouponMessage({
+        tone: "muted",
+        text: "The selected coupon expired or is no longer available.",
+      });
+    }
+  }, [appliedCouponCode, availableCoupons, couponApplied]);
+
+  const selectedCoupon =
+    availableCoupons.find((item) => item.code === selectedCouponCode) ||
+    availableCoupons[0] ||
+    null;
+  const appliedCoupon = couponApplied
+    ? availableCoupons.find((item) => item.code === appliedCouponCode) || null
+    : null;
+  const bannerCoupon = appliedCoupon || selectedCoupon;
   const propertyDiscount = Math.max(listPrice - offerPrice, 0);
-  const promotionDiscount = couponApplied ? availableCouponDiscount : 0;
+  const promotionDiscount = appliedCoupon?.discountValue || 0;
   const totalPayable = Math.max(
     offerPrice + pricingConfig.taxesAndFees - promotionDiscount,
     0,
   );
-  const couponSummary =
-    couponConfig.type === "percent"
-      ? `${couponConfig.value}% OFF`
-      : `${formatPrice(couponConfig.value)} OFF`;
-  const couponValueLabel =
-    couponConfig.type === "percent"
-      ? `${couponConfig.value}%`
-      : formatPrice(availableCouponDiscount || couponConfig.value);
+  const availableCouponDiscount = appliedCoupon?.discountValue || 0;
+  const couponSummary = bannerCoupon?.summary || "";
+  const couponValueLabel = bannerCoupon?.valueLabel || "";
+  const couponEmptyState = useMemo(() => {
+    if (!allCouponConfigs.length) {
+      return {
+        title: "No coupon available",
+        text: "The current offer price already reflects the best available deal.",
+      };
+    }
+
+    if (
+      !availableCoupons.length &&
+      allCouponConfigs.some((item) => item.targetUserUid) &&
+      !user?.uid
+    ) {
+      return {
+        title: "Log in to unlock offers",
+        text: "Some coupons are reserved for selected travellers only.",
+      };
+    }
+
+    if (!availableCoupons.length) {
+      return {
+        title: "No active coupon right now",
+        text: "The existing coupon offers are expired or not eligible for this account.",
+      };
+    }
+
+    return null;
+  }, [allCouponConfigs, availableCoupons, user?.uid]);
 
   const handleApplyCoupon = () => {
     setShowBreakup(true);
 
-    if (!couponConfig.active) {
+    if (!availableCoupons.length) {
       setCouponApplied(false);
+      setAppliedCouponCode("");
       setCouponMessage({
         tone: "muted",
-        text: "No coupon is available for this tour right now.",
+        text:
+          couponEmptyState?.text ||
+          "No coupon is available for this tour right now.",
       });
       return;
     }
 
-    const enteredCode = String(couponInput || "")
+    const enteredCode = String(couponInput || selectedCouponCode || "")
       .trim()
       .toUpperCase();
 
     if (!enteredCode) {
       setCouponApplied(false);
+      setAppliedCouponCode("");
       setCouponMessage({
         tone: "danger",
         text: "Enter a coupon code before paying.",
@@ -146,8 +315,13 @@ export default function PriceCard({
       return;
     }
 
-    if (enteredCode !== couponConfig.code) {
+    const matchingCoupon = availableCoupons.find(
+      (item) => item.code === enteredCode,
+    );
+
+    if (!matchingCoupon) {
       setCouponApplied(false);
+      setAppliedCouponCode("");
       setCouponMessage({
         tone: "danger",
         text: "That coupon code is invalid for this offer.",
@@ -155,10 +329,12 @@ export default function PriceCard({
       return;
     }
 
+    setSelectedCouponCode(matchingCoupon.code);
+    setAppliedCouponCode(matchingCoupon.code);
     setCouponApplied(true);
     setCouponMessage({
       tone: "success",
-      text: `Coupon applied • ${formatPrice(availableCouponDiscount)} discount given.`,
+      text: `Coupon applied • ${formatPrice(matchingCoupon.discountValue)} discount given.`,
     });
   };
 
@@ -190,24 +366,29 @@ export default function PriceCard({
       viewport={{ once: true }}
       transition={{ duration: 0.6 }}
     >
-      {discountPercent || couponConfig.active ? (
+      {discountPercent || bannerCoupon ? (
         <div className="price-offer-banner">
           <div>
             <p className="offer-banner-label">Offer available</p>
             <strong>
-              {couponConfig.active
-                ? `Apply ${couponConfig.code} before payment`
+              {bannerCoupon
+                ? `Apply ${bannerCoupon.code} before payment`
                 : `Save ${discountPercent}% on this tour`}
             </strong>
             <p className="offer-banner-text">
-              {couponConfig.active
-                ? couponConfig.description ||
+              {bannerCoupon
+                ? bannerCoupon.description ||
                   `Use the coupon to unlock ${couponSummary} on the final amount.`
                 : "The discounted offer price is already applied for this departure."}
             </p>
+            {bannerCoupon?.countdownLabel ? (
+              <p className="offer-banner-timer">
+                {bannerCoupon.countdownLabel}
+              </p>
+            ) : null}
           </div>
           <span className="offer-banner-chip">
-            {couponConfig.active ? couponSummary : `${discountPercent}% OFF`}
+            {bannerCoupon ? couponSummary : `${discountPercent}% OFF`}
           </span>
         </div>
       ) : null}
@@ -410,18 +591,20 @@ export default function PriceCard({
               </strong>
             </div>
 
-            {couponConfig.active ? (
+            {availableCoupons.length ? (
               <div
                 className={`price-row promotion ${couponApplied ? "active" : ""}`}
               >
                 <div className="price-row-main">
                   <span className="price-row-label">
-                    Promotion: {couponConfig.code}
+                    Promotion:{" "}
+                    {(appliedCoupon || selectedCoupon)?.code || "Offer"}
                   </span>
                   <span className="price-row-sub">
                     {couponApplied
                       ? "Coupon discount including GST/service fee reversals"
-                      : "Apply this code to unlock the extra discount"}
+                      : (selectedCoupon || appliedCoupon)?.countdownLabel ||
+                        "Apply this code to unlock the extra discount"}
                   </span>
                 </div>
                 <strong className="price-row-value">
@@ -447,52 +630,99 @@ export default function PriceCard({
       <div className="coupon-box">
         <div className="coupon-box__head">
           <strong>Coupon Codes</strong>
-          <span>Apply the best available offer before payment.</span>
+          <span>
+            {availableCoupons.length > 1
+              ? "Pick the best available offer before payment."
+              : "Apply the best available offer before payment."}
+          </span>
         </div>
 
-        {couponConfig.active ? (
-          <button
-            type="button"
-            className={`coupon-option ${couponApplied ? "active" : ""}`}
-            onClick={() => {
-              setCouponInput(couponConfig.code);
-              setCouponMessage({
-                tone: "muted",
-                text: `Selected ${couponConfig.code}. Tap APPLY to use it.`,
-              });
-            }}
-          >
-            <span
-              className={`coupon-radio ${couponApplied ? "active" : ""}`}
-              aria-hidden="true"
-            />
+        {availableCoupons.length ? (
+          <div className="coupon-option-list">
+            {availableCoupons.map((couponItem) => {
+              const isSelected = selectedCouponCode === couponItem.code;
+              const isApplied =
+                couponApplied && appliedCouponCode === couponItem.code;
 
-            <div className="coupon-option-copy">
-              <div className="coupon-option-top">
-                <strong>{couponConfig.code}</strong>
-                {couponApplied ? (
-                  <span className="coupon-applied-tag">Applied</span>
-                ) : null}
-              </div>
-              <p>
-                {couponConfig.description ||
-                  `Offer available on this booking. Save ${couponSummary}.`}
-              </p>
-            </div>
+              return (
+                <button
+                  key={couponItem.id}
+                  type="button"
+                  className={`coupon-option ${isSelected || isApplied ? "active" : ""}`}
+                  onClick={() => {
+                    setSelectedCouponCode(couponItem.code);
+                    setCouponInput(couponItem.code);
 
-            <span className="coupon-option-value">{couponValueLabel}</span>
-          </button>
+                    if (
+                      couponApplied &&
+                      appliedCouponCode !== couponItem.code
+                    ) {
+                      setCouponApplied(false);
+                      setAppliedCouponCode("");
+                    }
+
+                    setCouponMessage({
+                      tone: "muted",
+                      text: `Selected ${couponItem.code}. Tap APPLY to use it.`,
+                    });
+                  }}
+                >
+                  <span
+                    className={`coupon-radio ${isSelected || isApplied ? "active" : ""}`}
+                    aria-hidden="true"
+                  />
+
+                  <div className="coupon-option-copy">
+                    <div className="coupon-option-top">
+                      <strong>{couponItem.code}</strong>
+                      {isApplied ? (
+                        <span className="coupon-applied-tag">Applied</span>
+                      ) : null}
+                    </div>
+                    <p>
+                      {couponItem.description ||
+                        `Offer available on this booking. Save ${couponItem.summary}.`}
+                    </p>
+
+                    <div className="coupon-meta-tags">
+                      {couponItem.targetUserUid && !shouldHideSpecialCouponText ? (
+                        <span className="coupon-meta-chip">
+                          {couponItem.targetUserLabel &&
+                          !/especially for you/i.test(couponItem.targetUserLabel)
+                            ? `For ${couponItem.targetUserLabel}`
+                            : "Especially for you"}
+                        </span>
+                      ) : null}
+
+                      {couponItem.countdownLabel ? (
+                        <span className="coupon-meta-chip expiry">
+                          {couponItem.countdownLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <span className="coupon-option-value">
+                    {couponItem.valueLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         ) : (
           <div className="coupon-empty">
-            <strong>No coupon available</strong>
+            <strong>{couponEmptyState?.title || "No coupon available"}</strong>
             <p>
-              The current offer price already reflects the best available deal.
+              {couponEmptyState?.text ||
+                "The current offer price already reflects the best available deal."}
             </p>
           </div>
         )}
 
         <div className="coupon-footnote">
-          Coupon can be applied at payment step
+          {selectedCoupon?.countdownLabel
+            ? `Offer ends soon • ${selectedCoupon.countdownLabel}`
+            : "Coupon can be applied at payment step"}
         </div>
 
         <div className="coupon-input-row">
@@ -500,10 +730,22 @@ export default function PriceCard({
             type="text"
             value={couponInput}
             onChange={(event) => {
-              setCouponInput(event.target.value.toUpperCase());
+              const nextCode = event.target.value.toUpperCase();
+              const matchingCoupon = availableCoupons.find(
+                (item) => item.code === nextCode.trim(),
+              );
+
+              setCouponInput(nextCode);
+
+              if (matchingCoupon) {
+                setSelectedCouponCode(matchingCoupon.code);
+              }
+
               if (couponApplied) {
                 setCouponApplied(false);
+                setAppliedCouponCode("");
               }
+
               setCouponMessage({ tone: "", text: "" });
             }}
             onKeyDown={(event) => {
@@ -513,15 +755,15 @@ export default function PriceCard({
               }
             }}
             placeholder={
-              couponConfig.active ? "Have a Coupon Code" : "No coupon"
+              availableCoupons.length ? "Have a Coupon Code" : "No coupon"
             }
-            disabled={!couponConfig.active}
+            disabled={!availableCoupons.length}
           />
           <button
             type="button"
             className={`coupon-apply-btn ${couponApplied ? "applied" : ""}`}
             onClick={handleApplyCoupon}
-            disabled={!couponConfig.active}
+            disabled={!availableCoupons.length}
             aria-label="Apply coupon"
           >
             <span>{couponApplied ? "Applied" : "Apply Coupon"}</span>

@@ -23,6 +23,31 @@ const splitLines = (value = "") =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const toDateTimeLocalValue = (value = "") => {
+  const nextDate = new Date(value);
+
+  if (Number.isNaN(nextDate.getTime())) {
+    return "";
+  }
+
+  const offsetDate = new Date(
+    nextDate.getTime() - nextDate.getTimezoneOffset() * 60000,
+  );
+
+  return offsetDate.toISOString().slice(0, 16);
+};
+
+const toIsoDateTime = (value = "") => {
+  const trimmedValue = String(value || "").trim();
+
+  if (!trimmedValue) {
+    return "";
+  }
+
+  const nextDate = new Date(trimmedValue);
+  return Number.isNaN(nextDate.getTime()) ? "" : nextDate.toISOString();
+};
+
 const parseDelimitedRows = (value = "", width = 2) =>
   splitLines(value)
     .map((line) => line.split("|").map((item) => item.trim()))
@@ -131,7 +156,11 @@ export const createEmptyTour = () => ({
     value: 0,
     description: "",
     active: false,
+    expiresAt: "",
+    targetUserUid: "",
+    targetUserLabel: "",
   },
+  coupons: [],
   gallery: [],
   details: {
     pickup: "Hotel pickup available",
@@ -199,6 +228,18 @@ export const normalizeTourRecord = (tour = {}, fallbackId = "") => {
       : Boolean(
           tour.couponActive ?? (resolvedCouponCode && resolvedCouponValue > 0),
         );
+  const resolvedCouponExpiryAt = String(
+    tour.coupon?.expiresAt ||
+      tour.coupon?.expiryAt ||
+      tour.couponExpiryAt ||
+      "",
+  ).trim();
+  const resolvedCouponTargetUserUid = String(
+    tour.coupon?.targetUserUid || tour.couponTargetUserUid || "",
+  ).trim();
+  const resolvedCouponTargetUserLabel = String(
+    tour.coupon?.targetUserLabel || tour.couponTargetUserLabel || "",
+  ).trim();
   const resolvedPriceNote = String(
     tour.pricing?.priceNote || tour.priceNote || "1 Person x 1 Trip",
   ).trim();
@@ -215,6 +256,65 @@ export const normalizeTourRecord = (tour = {}, fallbackId = "") => {
     tour.pricing?.coupleDiscountedPrice ?? tour.coupleDiscountedPrice,
     resolvedCouplePrice,
   );
+  const resolvedCoupons = (
+    Array.isArray(tour.coupons) && tour.coupons.length
+      ? tour.coupons
+      : [
+          {
+            code: resolvedCouponCode,
+            type: resolvedCouponType,
+            value: resolvedCouponValue,
+            description: resolvedCouponDescription,
+            active: resolvedCouponActive,
+            expiresAt: resolvedCouponExpiryAt,
+            targetUserUid: resolvedCouponTargetUserUid,
+            targetUserLabel: resolvedCouponTargetUserLabel,
+          },
+        ]
+  )
+    .map((item) => {
+      const code = String(item?.code || "")
+        .trim()
+        .toUpperCase();
+      const type =
+        String(item?.type || "flat").toLowerCase() === "percent"
+          ? "percent"
+          : "flat";
+      const value = toNumber(item?.value, 0);
+      const description = String(item?.description || "").trim();
+      const active = Boolean(item?.active && code && value > 0);
+      const expiresAt = String(item?.expiresAt || item?.expiryAt || "").trim();
+      const targetUserUid = String(
+        item?.targetUserUid ||
+          item?.eligibleUserUid ||
+          (Array.isArray(item?.allowedUsers) ? item.allowedUsers[0] : "") ||
+          "",
+      ).trim();
+      const targetUserLabel = String(
+        item?.targetUserLabel || item?.eligibleUserLabel || "",
+      ).trim();
+
+      return {
+        code,
+        type,
+        value,
+        description,
+        active,
+        expiresAt,
+        targetUserUid,
+        targetUserLabel,
+      };
+    })
+    .filter(
+      (item) =>
+        item.code ||
+        item.description ||
+        item.value > 0 ||
+        item.active ||
+        item.expiresAt ||
+        item.targetUserUid,
+    );
+  const primaryCoupon = resolvedCoupons[0] || createEmptyTour().coupon;
 
   return {
     ...createEmptyTour(),
@@ -244,13 +344,8 @@ export const normalizeTourRecord = (tour = {}, fallbackId = "") => {
       couplePrice: resolvedCouplePrice,
       coupleDiscountedPrice: resolvedCoupleDiscountedPrice,
     },
-    coupon: {
-      code: resolvedCouponCode,
-      type: resolvedCouponType,
-      value: resolvedCouponValue,
-      description: resolvedCouponDescription,
-      active: resolvedCouponActive,
-    },
+    coupon: primaryCoupon,
+    coupons: resolvedCoupons,
     gallery,
     details: {
       pickup: String(
@@ -354,6 +449,13 @@ export const subscribeToTours = (onChange) => {
 
 export const tourToFormState = (tour = createEmptyTour()) => {
   const normalizedTour = normalizeTourRecord(tour);
+  const normalizedCoupons = normalizedTour.coupons.length
+    ? normalizedTour.coupons
+    : [normalizedTour.coupon];
+  const [
+    couponOne = createEmptyTour().coupon,
+    couponTwo = createEmptyTour().coupon,
+  ] = normalizedCoupons;
 
   return {
     id: normalizedTour.id,
@@ -372,11 +474,37 @@ export const tourToFormState = (tour = createEmptyTour()) => {
     coupleDiscountedPrice: String(
       normalizedTour.pricing.coupleDiscountedPrice || "",
     ),
-    couponCode: normalizedTour.coupon.code,
-    couponType: normalizedTour.coupon.type,
-    couponValue: String(normalizedTour.coupon.value || ""),
-    couponDescription: normalizedTour.coupon.description,
-    couponActive: Boolean(normalizedTour.coupon.active),
+    couponCode: couponOne.code,
+    couponType: couponOne.type,
+    couponValue: String(couponOne.value || ""),
+    couponDescription: couponOne.description,
+    couponActive: Boolean(couponOne.active),
+    couponOneCode: couponOne.code,
+    couponOneType: couponOne.type,
+    couponOneValue: String(couponOne.value || ""),
+    couponOneDescription: couponOne.description,
+    couponOneActive: Boolean(couponOne.active),
+    couponOneExpiryAt: toDateTimeLocalValue(couponOne.expiresAt),
+    couponOneTargetUserUid: couponOne.targetUserUid || "",
+    couponOneTargetUserLabel: couponOne.targetUserLabel || "",
+    couponTwoCode: couponTwo.code,
+    couponTwoType: couponTwo.type,
+    couponTwoValue: String(couponTwo.value || ""),
+    couponTwoDescription: couponTwo.description,
+    couponTwoActive: Boolean(couponTwo.active),
+    couponTwoExpiryAt: toDateTimeLocalValue(couponTwo.expiresAt),
+    couponTwoTargetUserUid: couponTwo.targetUserUid || "",
+    couponTwoTargetUserLabel: couponTwo.targetUserLabel || "",
+    couponList: normalizedCoupons.map((couponItem) => ({
+      code: couponItem.code || "",
+      type: couponItem.type || "flat",
+      value: String(couponItem.value || ""),
+      description: couponItem.description || "",
+      active: Boolean(couponItem.active),
+      expiresAt: toDateTimeLocalValue(couponItem.expiresAt),
+      targetUserUid: couponItem.targetUserUid || "",
+      targetUserLabel: couponItem.targetUserLabel || "",
+    })),
     maxGroupSize: String(normalizedTour.maxGroupSize || ""),
     desc: normalizedTour.desc,
     photo: normalizedTour.photo,
@@ -404,6 +532,65 @@ export const tourToFormState = (tour = createEmptyTour()) => {
 
 export const formStateToTour = (formState = {}) => {
   const derivedId = String(formState.id || "").trim();
+  const legacyCouponSource = [
+    {
+      code: formState.couponOneCode || formState.couponCode || "",
+      type: formState.couponOneType || formState.couponType || "flat",
+      value: formState.couponOneValue ?? formState.couponValue,
+      description:
+        formState.couponOneDescription || formState.couponDescription || "",
+      active: formState.couponOneActive ?? formState.couponActive,
+      expiresAt: formState.couponOneExpiryAt,
+      targetUserUid: formState.couponOneTargetUserUid || "",
+      targetUserLabel: formState.couponOneTargetUserLabel || "",
+    },
+    {
+      code: formState.couponTwoCode || "",
+      type: formState.couponTwoType || "flat",
+      value: formState.couponTwoValue,
+      description: formState.couponTwoDescription || "",
+      active: formState.couponTwoActive,
+      expiresAt: formState.couponTwoExpiryAt,
+      targetUserUid: formState.couponTwoTargetUserUid || "",
+      targetUserLabel: formState.couponTwoTargetUserLabel || "",
+    },
+  ];
+  const couponSource = Array.isArray(formState.couponList)
+    ? formState.couponList
+    : legacyCouponSource;
+  const coupons = couponSource
+    .map((item) => ({
+      code: String(item?.code || item?.couponCode || "")
+        .trim()
+        .toUpperCase(),
+      type:
+        String(item?.type || item?.couponType || "flat")
+          .trim()
+          .toLowerCase() === "percent"
+          ? "percent"
+          : "flat",
+      value: toNumber(item?.value ?? item?.couponValue, 0),
+      description: String(
+        item?.description || item?.couponDescription || "",
+      ).trim(),
+      active: Boolean(item?.active ?? item?.couponActive),
+      expiresAt: toIsoDateTime(item?.expiresAt || item?.couponExpiryAt),
+      targetUserUid: String(
+        item?.targetUserUid || item?.couponTargetUserUid || "",
+      ).trim(),
+      targetUserLabel: String(
+        item?.targetUserLabel || item?.couponTargetUserLabel || "",
+      ).trim(),
+    }))
+    .filter(
+      (item) =>
+        item.code ||
+        item.description ||
+        item.value > 0 ||
+        item.active ||
+        item.expiresAt ||
+        item.targetUserUid,
+    );
 
   return normalizeTourRecord({
     id: derivedId || toSlug(formState.title || DEFAULT_TOUR_ID),
@@ -428,20 +615,8 @@ export const formStateToTour = (formState = {}) => {
       couplePrice: toNumber(formState.couplePrice, 0),
       coupleDiscountedPrice: toNumber(formState.coupleDiscountedPrice, 0),
     },
-    coupon: {
-      code: String(formState.couponCode || "")
-        .trim()
-        .toUpperCase(),
-      type:
-        String(formState.couponType || "flat")
-          .trim()
-          .toLowerCase() === "percent"
-          ? "percent"
-          : "flat",
-      value: toNumber(formState.couponValue, 0),
-      description: String(formState.couponDescription || "").trim(),
-      active: Boolean(formState.couponActive),
-    },
+    coupon: coupons[0] || createEmptyTour().coupon,
+    coupons,
     gallery: splitLines(formState.galleryText),
     details: {
       pickup: formState.pickup,
