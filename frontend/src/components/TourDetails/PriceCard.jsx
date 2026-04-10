@@ -51,6 +51,7 @@ export default function PriceCard({
   const [couponApplied, setCouponApplied] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showBreakup, setShowBreakup] = useState(true);
+  const [showFeeInfo, setShowFeeInfo] = useState(false);
   const [travelerCount, setTravelerCount] = useState(1);
   const [travelerMode, setTravelerMode] = useState("adult");
   const [selectedCouponCode, setSelectedCouponCode] = useState("");
@@ -565,16 +566,20 @@ export default function PriceCard({
             <div className="price-row">
               <div className="price-row-main price-row-main-inline">
                 <span className="price-row-label">Taxes & Service Fees</span>
-                <div className="fee-info-wrap">
+                <div
+                  className={`fee-info-wrap ${showFeeInfo ? "is-open" : ""}`}
+                >
                   <button
                     type="button"
                     className="fee-info-btn"
                     aria-label="View taxes and service fee details"
+                    aria-expanded={showFeeInfo}
+                    onClick={() => setShowFeeInfo((prev) => !prev)}
                   >
                     <i className="ri-information-line"></i>
                   </button>
 
-                  <div className="fee-info-popover">
+                  <div className="fee-info-popover" role="tooltip">
                     <div>
                       <span>GST</span>
                       <strong>{formatPrice(pricingConfig.hotelGST)}</strong>

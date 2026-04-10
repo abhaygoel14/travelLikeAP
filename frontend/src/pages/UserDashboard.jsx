@@ -119,14 +119,39 @@ const compactPillButtonSx = {
 };
 
 const compactNavButtonSx = {
+  width: { xs: "auto", md: "100%" },
+  minWidth: { xs: "max-content", md: 0 },
+  flex: { xs: "0 0 auto", md: "unset" },
   justifyContent: "flex-start",
+  alignItems: "center",
+  textAlign: { xs: "left", md: "left" },
+  whiteSpace: "nowrap",
   borderRadius: 3,
-  px: 1.25,
-  py: 0.75,
-  minHeight: 36,
-  fontSize: "0.8rem",
+  px: { xs: 1.4, sm: 1.25 },
+  py: { xs: 0.95, sm: 0.75 },
+  minHeight: { xs: 42, sm: 36 },
+  fontSize: { xs: "0.84rem", sm: "0.8rem" },
   fontWeight: 600,
   textTransform: "none",
+};
+
+const mobileDashboardNavSx = {
+  direction: { xs: "row", md: "column" },
+  spacing: 1,
+  useFlexGap: true,
+  overflowX: { xs: "auto", md: "visible" },
+  overflowY: "hidden",
+  flexWrap: { xs: "nowrap", md: "nowrap" },
+  pb: { xs: 0.5, md: 0 },
+  pr: { xs: 0.25, md: 0 },
+  scrollbarWidth: "thin",
+  "&::-webkit-scrollbar": {
+    height: 5,
+  },
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor: "rgba(37, 99, 235, 0.24)",
+    borderRadius: 999,
+  },
 };
 
 const toolbarIconButtonSx = {
@@ -461,6 +486,36 @@ const normalizeMemoryGallery = (gallery = []) => {
     .filter((item) => item.src);
 };
 
+const isUploadedProfilePhoto = (value = "") => {
+  const trimmedValue = String(value || "").trim();
+
+  if (!trimmedValue) {
+    return false;
+  }
+
+  return (
+    trimmedValue.startsWith("data:") ||
+    /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(
+      trimmedValue,
+    )
+  );
+};
+
+const resolveUploadedProfilePhoto = (user = {}) => {
+  const candidates = [
+    user.uploadedProfilePhoto,
+    user.customProfilePhoto,
+    user.profileUrl,
+    user.imageUrl,
+  ];
+
+  return (
+    candidates
+      .map((value) => String(value || "").trim())
+      .find((value) => isUploadedProfilePhoto(value)) || ""
+  );
+};
+
 const getSafeFirebasePhotoURL = (value) => {
   const trimmedValue = String(value || "").trim();
 
@@ -533,9 +588,7 @@ const normalizeProfile = (user = {}) => {
     .filter(Boolean)
     .join(" ")
     .trim();
-  const resolvedPhotoURL = String(
-    user.profileUrl || user.imageUrl || user.photoURL || "",
-  ).trim();
+  const resolvedPhotoURL = resolveUploadedProfilePhoto(user);
 
   return {
     ...user,
@@ -545,8 +598,9 @@ const normalizeProfile = (user = {}) => {
       safeDisplayName || resolvedFullName || safeUsername || "Traveler",
     username: safeUsername || resolvedFullName || cleanSource || "Traveler",
     photoURL: resolvedPhotoURL,
-    profileUrl: String(user.profileUrl || resolvedPhotoURL || "").trim(),
-    imageUrl: String(user.imageUrl || resolvedPhotoURL || "").trim(),
+    uploadedProfilePhoto: resolvedPhotoURL,
+    profileUrl: resolvedPhotoURL,
+    imageUrl: resolvedPhotoURL,
     hobby: user.hobby || "",
     interests: Array.isArray(user.interests)
       ? user.interests
@@ -576,6 +630,7 @@ const UserDashboard = () => {
   const { tours } = useTours();
   const [tab, setTab] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -959,16 +1014,11 @@ const UserDashboard = () => {
       const nextProfile = normalizeProfile({
         ...profile,
         photoURL: "",
+        uploadedProfilePhoto: "",
         profileUrl: "",
         imageUrl: "",
         updatedAt: new Date().toISOString(),
       });
-
-      if (auth?.currentUser) {
-        await updateProfile(auth.currentUser, {
-          photoURL: null,
-        });
-      }
 
       setForm((prev) => ({ ...prev, photoURL: "" }));
       await persistProfile(nextProfile, "Profile photo removed.");
@@ -1099,16 +1149,37 @@ const UserDashboard = () => {
       return;
     }
 
+    setUploadingAvatar(true);
+
     try {
       const imageUrl = await fileToDataUrl(file);
-      setIsEditingProfile(true);
-      setForm((prev) => ({ ...prev, photoURL: imageUrl }));
-      setStatus({
-        severity: "info",
-        message: "Profile image selected. Click Save Profile to keep it.",
+      const uploadedPhotoUrl = user?.uid
+        ? await uploadAvatarAndGetURL(user.uid, imageUrl)
+        : imageUrl;
+      const nextPhotoURL =
+        getSafeFirebasePhotoURL(uploadedPhotoUrl) || imageUrl;
+
+      const nextProfile = normalizeProfile({
+        ...profile,
+        photoURL: nextPhotoURL,
+        uploadedProfilePhoto: nextPhotoURL,
+        profileUrl: nextPhotoURL,
+        imageUrl: nextPhotoURL,
+        updatedAt: new Date().toISOString(),
       });
+
+      setForm((prev) => ({ ...prev, photoURL: nextPhotoURL }));
+      await persistProfile(nextProfile, "Profile image updated successfully.");
+      setIsEditingProfile(false);
     } catch (error) {
-      setStatus({ severity: "error", message: "Unable to load that image." });
+      console.error("Error preparing profile image:", error);
+      setStatus({
+        severity: "error",
+        message: "Unable to update that profile image.",
+      });
+    } finally {
+      setUploadingAvatar(false);
+      event.target.value = "";
     }
   };
 
@@ -1783,6 +1854,7 @@ const UserDashboard = () => {
           .map((item) => item.trim())
           .filter(Boolean),
         photoURL: resolvedPhotoURL,
+        uploadedProfilePhoto: resolvedPhotoURL,
         profileUrl: resolvedPhotoURL,
         imageUrl: resolvedPhotoURL,
         updatedAt: new Date().toISOString(),
@@ -1795,20 +1867,13 @@ const UserDashboard = () => {
         try {
           await updateProfile(auth.currentUser, {
             displayName: nextProfile.displayName || nextProfile.firstName,
-            photoURL: safePhotoURL,
           });
         } catch (profileError) {
-          console.warn(
-            "Firebase auth profile photo update skipped:",
-            profileError,
-          );
-          await updateProfile(auth.currentUser, {
-            displayName: nextProfile.displayName || nextProfile.firstName,
-          });
+          console.warn("Firebase auth profile sync skipped:", profileError);
 
           if (nextProfile.photoURL) {
             saveNotes.push(
-              "Photo saved in your dashboard profile, but Firebase Auth skipped the image URL to avoid a CORS/network issue.",
+              "Photo saved in your dashboard profile, but Firebase Auth sync was skipped for now.",
             );
           }
         }
@@ -1838,6 +1903,11 @@ const UserDashboard = () => {
         successMessage = `${successMessage} ${saveNotes.join(" ")}`.trim();
       }
 
+      setForm((prev) => ({
+        ...prev,
+        photoURL: nextProfile.photoURL || "",
+      }));
+
       await persistProfile(nextProfile, successMessage);
       setIsEditingProfile(false);
     } catch (error) {
@@ -1847,6 +1917,154 @@ const UserDashboard = () => {
       setSaving(false);
     }
   };
+
+  const renderWelcomeSection = () => (
+    <Paper elevation={0} sx={sectionCardSx}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        justifyContent="space-between"
+        spacing={2}
+      >
+        <Box>
+          <Typography
+            variant="h4"
+            fontWeight={800}
+            sx={{
+              color: "#1c1917",
+              fontSize: { xs: "1.8rem", md: "2.25rem" },
+            }}
+          >
+            Good Morning, {firstName} 👋
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+            Plan your itinerary with us.
+          </Typography>
+        </Box>
+
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
+          alignItems="center"
+        >
+          <IconButton
+            aria-label="Search tours"
+            component={RouterLink}
+            to="/tours/search"
+            sx={toolbarIconButtonSx}
+          >
+            <SearchRoundedIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            aria-label="Edit profile"
+            onClick={() => setIsEditingProfile((prev) => !prev)}
+            sx={{
+              ...toolbarIconButtonSx,
+              bgcolor: isEditingProfile ? "#dbeafe" : "#f8fbff",
+              color: isEditingProfile ? "#1d4ed8" : "#2563eb",
+              borderColor: isEditingProfile ? "#93c5fd" : "#dbeafe",
+            }}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<SaveIcon />}
+            onClick={handleSaveProfile}
+            disabled={saving || uploadingAvatar || !isEditingProfile}
+            sx={{
+              ...compactPillButtonSx,
+              px: 1.3,
+              bgcolor: "#2563eb",
+              color: "#fff",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#1d4ed8", boxShadow: "none" },
+            }}
+          >
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </Stack>
+      </Stack>
+
+      <Popover
+        open={showNotifications}
+        anchorEl={notificationAnchorEl}
+        onClose={() => setNotificationAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        disableScrollLock
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1,
+              width: 360,
+              maxWidth: "calc(100vw - 32px)",
+              p: 1.25,
+              borderRadius: 3,
+              border: "1px solid #dbeafe",
+              bgcolor: "#f8fbff",
+              boxShadow: "0 18px 40px rgba(37, 99, 235, 0.16)",
+              overflow: "visible",
+            },
+          },
+        }}
+      >
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 1 }}
+        >
+          <Typography fontWeight={700} sx={{ color: "#1c1917" }}>
+            Notifications
+          </Typography>
+          <Button
+            size="small"
+            onClick={() => setNotifications([])}
+            sx={{
+              ...compactPillButtonSx,
+              color: "#2563eb",
+              minWidth: 0,
+            }}
+          >
+            Clear
+          </Button>
+        </Stack>
+        <Stack spacing={1}>
+          {notifications.length ? (
+            notifications.map((item, index) => (
+              <Box
+                key={`${item.title}-${index}`}
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  bgcolor: "#fff",
+                  border: "1px solid #e0ecff",
+                }}
+              >
+                <Typography fontSize="0.86rem" fontWeight={600} color="#1f2937">
+                  {item.title}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {item.subtitle}
+                </Typography>
+              </Box>
+            ))
+          ) : (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ textAlign: "center", py: 2 }}
+            >
+              No new notifications.
+            </Typography>
+          )}
+        </Stack>
+      </Popover>
+    </Paper>
+  );
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -1875,6 +2093,10 @@ const UserDashboard = () => {
           </Alert>
         )}
 
+        <Box sx={{ display: { xs: "block", md: "none" }, mb: 2 }}>
+          {renderWelcomeSection()}
+        </Box>
+
         <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
           <Grid item xs={12} md={4} lg={3}>
             <Paper
@@ -1889,7 +2111,11 @@ const UserDashboard = () => {
               }}
             >
               <Stack spacing={2.5} sx={{ height: "100%" }}>
-                <Stack direction="row" spacing={1.25} alignItems="center">
+                <Stack
+                  direction={{ xs: "column", sm: "row", md: "row" }}
+                  spacing={1.25}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                >
                   <Avatar
                     src={form.photoURL || profile.photoURL || ""}
                     alt={firstName}
@@ -1897,7 +2123,7 @@ const UserDashboard = () => {
                   >
                     {String(firstName).charAt(0).toUpperCase()}
                   </Avatar>
-                  <Box>
+                  <Box sx={{ width: "100%" }}>
                     <Typography fontWeight={700} color="#1f2937">
                       {profile.displayName || profile.username}
                     </Typography>
@@ -1929,11 +2155,15 @@ const UserDashboard = () => {
                   >
                     General
                   </Typography>
-                  <Stack spacing={1}>
+                  <Stack
+                    direction={{ xs: "row", md: "column" }}
+                    spacing={1}
+                    useFlexGap
+                    sx={mobileDashboardNavSx}
+                  >
                     {generalItems.map((item) => (
                       <Button
                         key={item.label}
-                        fullWidth
                         size="small"
                         startIcon={item.icon}
                         component={RouterLink}
@@ -1957,18 +2187,22 @@ const UserDashboard = () => {
                   </Stack>
                 </Box>
 
-                <Box>
+                <Box sx={{ display: { xs: "none", md: "block" } }}>
                   <Typography
                     variant="overline"
                     sx={{ color: "#64748b", letterSpacing: ".08em" }}
                   >
                     Discover
                   </Typography>
-                  <Stack spacing={1}>
+                  <Stack
+                    direction={{ xs: "row", md: "column" }}
+                    spacing={1}
+                    useFlexGap
+                    sx={mobileDashboardNavSx}
+                  >
                     {discoverItems.map((item, index) => (
                       <Button
                         key={item.label}
-                        fullWidth
                         size="small"
                         startIcon={item.icon}
                         component={RouterLink}
@@ -1992,7 +2226,12 @@ const UserDashboard = () => {
                   </Stack>
                 </Box>
 
-                <Divider sx={{ borderColor: "#dbeafe" }} />
+                <Divider
+                  sx={{
+                    borderColor: "#dbeafe",
+                    display: { xs: "none", md: "block" },
+                  }}
+                />
 
                 <Button
                   component={RouterLink}
@@ -2000,6 +2239,7 @@ const UserDashboard = () => {
                   fullWidth
                   variant="text"
                   sx={{
+                    display: { xs: "none", md: "flex" },
                     justifyContent: "flex-start",
                     textTransform: "none",
                     color: "#2563eb",
@@ -2015,541 +2255,372 @@ const UserDashboard = () => {
 
           <Grid item xs={12} md={8} lg={9}>
             <Stack spacing={2.5}>
-              <Paper elevation={0} sx={sectionCardSx}>
-                <Stack
-                  direction={{ xs: "column", md: "row" }}
-                  justifyContent="space-between"
-                  spacing={2}
-                >
-                  <Box>
-                    <Typography
-                      variant="h4"
-                      fontWeight={800}
-                      sx={{
-                        color: "#1c1917",
-                        fontSize: { xs: "1.8rem", md: "2.25rem" },
-                      }}
-                    >
-                      Good Morning, {firstName} 👋
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                      Plan your itinerary with us.
-                    </Typography>
-                  </Box>
+              <Box sx={{ display: { xs: "none", md: "block" } }}>
+                {renderWelcomeSection()}
+              </Box>
 
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    useFlexGap
-                    flexWrap="wrap"
-                    alignItems="center"
-                  >
-                    <IconButton aria-label="Search" sx={toolbarIconButtonSx}>
-                      <SearchRoundedIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      aria-label="Notifications"
-                      onClick={(event) =>
-                        setNotificationAnchorEl(
-                          showNotifications ? null : event.currentTarget,
-                        )
-                      }
-                      sx={{
-                        ...toolbarIconButtonSx,
-                        bgcolor: showNotifications ? "#dbeafe" : "#f8fbff",
-                        color: showNotifications ? "#1d4ed8" : "#2563eb",
-                      }}
-                    >
-                      <Box
-                        sx={{ position: "relative", display: "inline-flex" }}
+              <Dialog
+                open={memoryUploadOpen}
+                onClose={handleCloseMemoryUploadModal}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{
+                  sx: {
+                    borderRadius: 3,
+                    border: "1px solid #dbeafe",
+                  },
+                }}
+              >
+                <DialogTitle sx={{ pb: 1 }}>
+                  <Typography variant="h6" fontWeight={800} color="#1c1917">
+                    Add memory details
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Fill in the memory name and optionally link it to a trip.
+                  </Typography>
+                </DialogTitle>
+                <DialogContent dividers sx={{ borderColor: "#dbeafe" }}>
+                  <Stack spacing={1.25}>
+                    {memoryDrafts.map((memory, index) => (
+                      <Paper
+                        key={memory.id || `memory-draft-${index}`}
+                        elevation={0}
+                        sx={{
+                          p: 1.25,
+                          borderRadius: 3,
+                          border: "1px solid #dbeafe",
+                          bgcolor: "#f8fbff",
+                        }}
                       >
-                        <NotificationsNoneRoundedIcon fontSize="small" />
-                        <Box
-                          sx={{
-                            position: "absolute",
-                            top: -2,
-                            right: -2,
-                            width: 8,
-                            height: 8,
-                            borderRadius: "50%",
-                            bgcolor: "#ef4444",
-                          }}
-                        />
-                      </Box>
-                    </IconButton>
-                    <IconButton
-                      aria-label="Edit profile"
-                      onClick={() => setIsEditingProfile((prev) => !prev)}
-                      sx={{
-                        ...toolbarIconButtonSx,
-                        bgcolor: isEditingProfile ? "#dbeafe" : "#f8fbff",
-                        color: isEditingProfile ? "#1d4ed8" : "#2563eb",
-                        borderColor: isEditingProfile ? "#93c5fd" : "#dbeafe",
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<SaveIcon />}
-                      onClick={handleSaveProfile}
-                      disabled={saving || !isEditingProfile}
-                      sx={{
-                        ...compactPillButtonSx,
-                        px: 1.3,
-                        bgcolor: "#2563eb",
-                        color: "#fff",
-                        boxShadow: "none",
-                        "&:hover": { bgcolor: "#1d4ed8", boxShadow: "none" },
-                      }}
-                    >
-                      {saving ? "Saving..." : "Save"}
-                    </Button>
-                  </Stack>
-                </Stack>
-
-                <Popover
-                  open={showNotifications}
-                  anchorEl={notificationAnchorEl}
-                  onClose={() => setNotificationAnchorEl(null)}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                  transformOrigin={{ vertical: "top", horizontal: "right" }}
-                  disableScrollLock
-                  slotProps={{
-                    paper: {
-                      sx: {
-                        mt: 1,
-                        width: 360,
-                        maxWidth: "calc(100vw - 32px)",
-                        p: 1.25,
-                        borderRadius: 3,
-                        border: "1px solid #dbeafe",
-                        bgcolor: "#f8fbff",
-                        boxShadow: "0 18px 40px rgba(37, 99, 235, 0.16)",
-                        overflow: "visible",
-                      },
-                    },
-                  }}
-                >
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    sx={{ mb: 1 }}
-                  >
-                    <Typography fontWeight={700} sx={{ color: "#1c1917" }}>
-                      Notifications
-                    </Typography>
-                    <Button
-                      size="small"
-                      onClick={() => setNotifications([])}
-                      sx={{
-                        ...compactPillButtonSx,
-                        color: "#2563eb",
-                        minWidth: 0,
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  </Stack>
-                  <Stack spacing={1}>
-                    {notifications.length ? (
-                      notifications.map((item, index) => (
-                        <Box
-                          key={`${item.title}-${index}`}
-                          sx={{
-                            p: 1,
-                            borderRadius: 2,
-                            bgcolor: "#fff",
-                            border: "1px solid #e0ecff",
-                          }}
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1.25}
                         >
-                          <Typography
-                            fontSize="0.86rem"
-                            fontWeight={600}
-                            color="#1f2937"
-                          >
-                            {item.title}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {item.subtitle}
-                          </Typography>
-                        </Box>
-                      ))
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No new notifications.
-                      </Typography>
-                    )}
-                  </Stack>
-                </Popover>
-
-                <Dialog
-                  open={memoryUploadOpen}
-                  onClose={handleCloseMemoryUploadModal}
-                  fullWidth
-                  maxWidth="sm"
-                  PaperProps={{
-                    sx: {
-                      borderRadius: 3,
-                      border: "1px solid #dbeafe",
-                    },
-                  }}
-                >
-                  <DialogTitle sx={{ pb: 1 }}>
-                    <Typography variant="h6" fontWeight={800} color="#1c1917">
-                      Add memory details
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Fill in the memory name and optionally link it to a trip.
-                    </Typography>
-                  </DialogTitle>
-                  <DialogContent dividers sx={{ borderColor: "#dbeafe" }}>
-                    <Stack spacing={1.25}>
-                      {memoryDrafts.map((memory, index) => (
-                        <Paper
-                          key={memory.id || `memory-draft-${index}`}
-                          elevation={0}
-                          sx={{
-                            p: 1.25,
-                            borderRadius: 3,
-                            border: "1px solid #dbeafe",
-                            bgcolor: "#f8fbff",
-                          }}
-                        >
-                          <Stack
-                            direction={{ xs: "column", sm: "row" }}
-                            spacing={1.25}
-                          >
-                            <Box
-                              component="img"
-                              src={memory.src}
-                              alt={memory.title || `Memory ${index + 1}`}
-                              sx={{
-                                width: { xs: "100%", sm: 100 },
-                                height: 100,
-                                objectFit: "cover",
-                                borderRadius: 2.5,
-                              }}
+                          <Box
+                            component="img"
+                            src={memory.src}
+                            alt={memory.title || `Memory ${index + 1}`}
+                            sx={{
+                              width: { xs: "100%", sm: 100 },
+                              height: 100,
+                              objectFit: "cover",
+                              borderRadius: 2.5,
+                            }}
+                          />
+                          <Stack spacing={1} sx={{ flex: 1 }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              label="Memory name"
+                              value={memory.title || ""}
+                              onChange={(event) =>
+                                handleMemoryDraftChange(
+                                  index,
+                                  "title",
+                                  event.target.value,
+                                )
+                              }
                             />
-                            <Stack spacing={1} sx={{ flex: 1 }}>
-                              <TextField
-                                fullWidth
+                            <TextField
+                              select
+                              fullWidth
+                              size="small"
+                              label="Past trip (optional)"
+                              value={memory.tripTitle || ""}
+                              onChange={(event) =>
+                                handleMemoryDraftChange(
+                                  index,
+                                  "tripTitle",
+                                  event.target.value,
+                                )
+                              }
+                            >
+                              <MenuItem value="">None</MenuItem>
+                              {pastTripChoices.map((trip, tripIndex) => (
+                                <MenuItem
+                                  key={`${trip.label}-${tripIndex}`}
+                                  value={trip.label}
+                                >
+                                  {trip.label}
+                                  {trip.helper ? ` — ${trip.helper}` : ""}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                            <Stack
+                              direction="row"
+                              spacing={0.5}
+                              alignItems="center"
+                            >
+                              <LockOutlinedIcon
+                                sx={{
+                                  fontSize: 16,
+                                  color:
+                                    memory.visibility === "public"
+                                      ? "#94a3b8"
+                                      : "#2563eb",
+                                }}
+                              />
+                              <Switch
                                 size="small"
-                                label="Memory name"
-                                value={memory.title || ""}
+                                checked={memory.visibility === "public"}
                                 onChange={(event) =>
                                   handleMemoryDraftChange(
                                     index,
-                                    "title",
-                                    event.target.value,
+                                    "visibility",
+                                    event.target.checked ? "public" : "private",
                                   )
                                 }
                               />
-                              <TextField
-                                select
-                                fullWidth
-                                size="small"
-                                label="Past trip (optional)"
-                                value={memory.tripTitle || ""}
-                                onChange={(event) =>
-                                  handleMemoryDraftChange(
-                                    index,
-                                    "tripTitle",
-                                    event.target.value,
-                                  )
-                                }
+                              <PublicRoundedIcon
+                                sx={{
+                                  fontSize: 16,
+                                  color:
+                                    memory.visibility === "public"
+                                      ? "#2563eb"
+                                      : "#94a3b8",
+                                }}
+                              />
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
                               >
-                                <MenuItem value="">None</MenuItem>
-                                {pastTripChoices.map((trip, tripIndex) => (
-                                  <MenuItem
-                                    key={`${trip.label}-${tripIndex}`}
-                                    value={trip.label}
-                                  >
-                                    {trip.label}
-                                    {trip.helper ? ` — ${trip.helper}` : ""}
-                                  </MenuItem>
-                                ))}
-                              </TextField>
-                              <Stack
-                                direction="row"
-                                spacing={0.5}
-                                alignItems="center"
-                              >
-                                <LockOutlinedIcon
-                                  sx={{
-                                    fontSize: 16,
-                                    color:
-                                      memory.visibility === "public"
-                                        ? "#94a3b8"
-                                        : "#2563eb",
-                                  }}
-                                />
-                                <Switch
-                                  size="small"
-                                  checked={memory.visibility === "public"}
-                                  onChange={(event) =>
-                                    handleMemoryDraftChange(
-                                      index,
-                                      "visibility",
-                                      event.target.checked
-                                        ? "public"
-                                        : "private",
-                                    )
-                                  }
-                                />
-                                <PublicRoundedIcon
-                                  sx={{
-                                    fontSize: 16,
-                                    color:
-                                      memory.visibility === "public"
-                                        ? "#2563eb"
-                                        : "#94a3b8",
-                                  }}
-                                />
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                >
-                                  {memory.visibility === "public"
-                                    ? "Public"
-                                    : "Private"}
-                                </Typography>
-                              </Stack>
+                                {memory.visibility === "public"
+                                  ? "Public"
+                                  : "Private"}
+                              </Typography>
                             </Stack>
                           </Stack>
-                        </Paper>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </DialogContent>
+                <DialogActions sx={{ px: 2, py: 1.5 }}>
+                  <Button
+                    onClick={handleCloseMemoryUploadModal}
+                    disabled={savingMemories}
+                    sx={{ ...compactPillButtonSx }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleConfirmMemoryUpload}
+                    disabled={savingMemories || !memoryDrafts.length}
+                    sx={{
+                      ...compactPillButtonSx,
+                      bgcolor: "#2563eb",
+                      color: "#fff",
+                      "&:hover": { bgcolor: "#1d4ed8" },
+                    }}
+                  >
+                    {savingMemories ? "Saving..." : "Save memories"}
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
+              <Dialog
+                open={memoryEditOpen}
+                onClose={handleCloseMemoryEditModal}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{
+                  sx: {
+                    borderRadius: 3,
+                    border: "1px solid #dbeafe",
+                  },
+                }}
+              >
+                <DialogTitle sx={{ pb: 1 }}>
+                  <Typography variant="h6" fontWeight={800} color="#1c1917">
+                    Edit memory
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Update the memory details the way you want.
+                  </Typography>
+                </DialogTitle>
+                <DialogContent dividers sx={{ borderColor: "#dbeafe" }}>
+                  <Stack spacing={1.25}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Memory name"
+                      value={memoryEditor.title}
+                      onChange={(event) =>
+                        setMemoryEditor((prev) => ({
+                          ...prev,
+                          title: event.target.value,
+                        }))
+                      }
+                    />
+                    <TextField
+                      select
+                      fullWidth
+                      size="small"
+                      label="Past trip (optional)"
+                      value={memoryEditor.tripTitle}
+                      onChange={(event) =>
+                        setMemoryEditor((prev) => ({
+                          ...prev,
+                          tripTitle: event.target.value,
+                        }))
+                      }
+                    >
+                      <MenuItem value="">None</MenuItem>
+                      {pastTripChoices.map((trip, tripIndex) => (
+                        <MenuItem
+                          key={`${trip.label}-${tripIndex}`}
+                          value={trip.label}
+                        >
+                          {trip.label}
+                          {trip.helper ? ` — ${trip.helper}` : ""}
+                        </MenuItem>
                       ))}
-                    </Stack>
-                  </DialogContent>
-                  <DialogActions sx={{ px: 2, py: 1.5 }}>
-                    <Button
-                      onClick={handleCloseMemoryUploadModal}
-                      disabled={savingMemories}
-                      sx={{ ...compactPillButtonSx }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={handleConfirmMemoryUpload}
-                      disabled={savingMemories || !memoryDrafts.length}
-                      sx={{
-                        ...compactPillButtonSx,
-                        bgcolor: "#2563eb",
-                        color: "#fff",
-                        "&:hover": { bgcolor: "#1d4ed8" },
-                      }}
-                    >
-                      {savingMemories ? "Saving..." : "Save memories"}
-                    </Button>
-                  </DialogActions>
-                </Dialog>
-
-                <Dialog
-                  open={memoryEditOpen}
-                  onClose={handleCloseMemoryEditModal}
-                  fullWidth
-                  maxWidth="sm"
-                  PaperProps={{
-                    sx: {
-                      borderRadius: 3,
-                      border: "1px solid #dbeafe",
-                    },
-                  }}
-                >
-                  <DialogTitle sx={{ pb: 1 }}>
-                    <Typography variant="h6" fontWeight={800} color="#1c1917">
-                      Edit memory
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Update the memory details the way you want.
-                    </Typography>
-                  </DialogTitle>
-                  <DialogContent dividers sx={{ borderColor: "#dbeafe" }}>
-                    <Stack spacing={1.25}>
-                      <TextField
-                        fullWidth
+                    </TextField>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <LockOutlinedIcon
+                        sx={{
+                          fontSize: 16,
+                          color:
+                            memoryEditor.visibility === "public"
+                              ? "#94a3b8"
+                              : "#2563eb",
+                        }}
+                      />
+                      <Switch
                         size="small"
-                        label="Memory name"
-                        value={memoryEditor.title}
+                        checked={memoryEditor.visibility === "public"}
                         onChange={(event) =>
                           setMemoryEditor((prev) => ({
                             ...prev,
-                            title: event.target.value,
+                            visibility: event.target.checked
+                              ? "public"
+                              : "private",
                           }))
                         }
                       />
-                      <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        label="Past trip (optional)"
-                        value={memoryEditor.tripTitle}
-                        onChange={(event) =>
-                          setMemoryEditor((prev) => ({
-                            ...prev,
-                            tripTitle: event.target.value,
-                          }))
-                        }
-                      >
-                        <MenuItem value="">None</MenuItem>
-                        {pastTripChoices.map((trip, tripIndex) => (
-                          <MenuItem
-                            key={`${trip.label}-${tripIndex}`}
-                            value={trip.label}
-                          >
-                            {trip.label}
-                            {trip.helper ? ` — ${trip.helper}` : ""}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <LockOutlinedIcon
-                          sx={{
-                            fontSize: 16,
-                            color:
-                              memoryEditor.visibility === "public"
-                                ? "#94a3b8"
-                                : "#2563eb",
-                          }}
-                        />
-                        <Switch
-                          size="small"
-                          checked={memoryEditor.visibility === "public"}
-                          onChange={(event) =>
-                            setMemoryEditor((prev) => ({
-                              ...prev,
-                              visibility: event.target.checked
-                                ? "public"
-                                : "private",
-                            }))
-                          }
-                        />
-                        <PublicRoundedIcon
-                          sx={{
-                            fontSize: 16,
-                            color:
-                              memoryEditor.visibility === "public"
-                                ? "#2563eb"
-                                : "#94a3b8",
-                          }}
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                          {memoryEditor.visibility === "public"
-                            ? "Public"
-                            : "Private"}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </DialogContent>
-                  <DialogActions sx={{ px: 2, py: 1.5 }}>
-                    <Button
-                      onClick={handleCloseMemoryEditModal}
-                      disabled={savingMemories}
-                      sx={{ ...compactPillButtonSx }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={handleSaveMemoryEdit}
-                      disabled={savingMemories}
-                      sx={{
-                        ...compactPillButtonSx,
-                        bgcolor: "#2563eb",
-                        color: "#fff",
-                        "&:hover": { bgcolor: "#1d4ed8" },
-                      }}
-                    >
-                      {savingMemories ? "Saving..." : "Save changes"}
-                    </Button>
-                  </DialogActions>
-                </Dialog>
-
-                <Dialog
-                  open={Boolean(viewingMemory)}
-                  onClose={handleCloseMemoryViewer}
-                  fullWidth
-                  maxWidth="md"
-                  PaperProps={{
-                    sx: {
-                      borderRadius: 3,
-                      border: "1px solid #dbeafe",
-                      overflow: "hidden",
-                    },
-                  }}
-                >
-                  <DialogTitle sx={{ pb: 1 }}>
-                    <Typography variant="h6" fontWeight={800} color="#1c1917">
-                      {viewingMemory?.title || "Memory preview"}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {viewingMemory?.tripTitle
-                        ? `Trip: ${viewingMemory.tripTitle}`
-                        : "Your saved travel memory"}
-                    </Typography>
-                  </DialogTitle>
-                  <DialogContent sx={{ p: 0, bgcolor: "#f8fbff" }}>
-                    {viewingMemory ? (
-                      <Box
-                        component="img"
-                        src={viewingMemory.src}
-                        alt={viewingMemory.title || "Memory preview"}
+                      <PublicRoundedIcon
                         sx={{
-                          width: "100%",
-                          maxHeight: "75vh",
-                          objectFit: "contain",
-                          display: "block",
-                          bgcolor: "#ffffff",
+                          fontSize: 16,
+                          color:
+                            memoryEditor.visibility === "public"
+                              ? "#2563eb"
+                              : "#94a3b8",
                         }}
                       />
-                    ) : null}
-                  </DialogContent>
-                  <DialogActions sx={{ px: 2, py: 1.5 }}>
-                    <Button
-                      onClick={handleCloseMemoryViewer}
-                      sx={{ ...compactPillButtonSx, color: "#2563eb" }}
-                    >
-                      Close
-                    </Button>
-                  </DialogActions>
-                </Dialog>
-
-                <Box sx={storyScrollableRowSx}>
-                  {storyItems.map((item, index) => (
-                    <Box
-                      key={`story-${index}`}
-                      component={RouterLink}
-                      to={item.to}
-                      sx={{
-                        textDecoration: "none",
-                        textAlign: "center",
-                        flex: "0 0 auto",
-                        minWidth: { xs: 72, sm: 76 },
-                      }}
-                    >
-                      <Avatar
-                        src={item.image}
-                        alt={item.label}
-                        sx={{
-                          width: 58,
-                          height: 58,
-                          border: "2px solid #2563eb",
-                          bgcolor: "#fff",
-                        }}
-                      />
-                      <Typography
-                        variant="caption"
-                        sx={{ mt: 0.75, color: "#475569", display: "block" }}
-                      >
-                        {item.label}
+                      <Typography variant="caption" color="text.secondary">
+                        {memoryEditor.visibility === "public"
+                          ? "Public"
+                          : "Private"}
                       </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              </Paper>
+                    </Stack>
+                  </Stack>
+                </DialogContent>
+                <DialogActions sx={{ px: 2, py: 1.5 }}>
+                  <Button
+                    onClick={handleCloseMemoryEditModal}
+                    disabled={savingMemories}
+                    sx={{ ...compactPillButtonSx }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveMemoryEdit}
+                    disabled={savingMemories}
+                    sx={{
+                      ...compactPillButtonSx,
+                      bgcolor: "#2563eb",
+                      color: "#fff",
+                      "&:hover": { bgcolor: "#1d4ed8" },
+                    }}
+                  >
+                    {savingMemories ? "Saving..." : "Save changes"}
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
+              <Dialog
+                open={Boolean(viewingMemory)}
+                onClose={handleCloseMemoryViewer}
+                fullWidth
+                maxWidth="md"
+                PaperProps={{
+                  sx: {
+                    borderRadius: 3,
+                    border: "1px solid #dbeafe",
+                    overflow: "hidden",
+                  },
+                }}
+              >
+                <DialogTitle sx={{ pb: 1 }}>
+                  <Typography variant="h6" fontWeight={800} color="#1c1917">
+                    {viewingMemory?.title || "Memory preview"}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {viewingMemory?.tripTitle
+                      ? `Trip: ${viewingMemory.tripTitle}`
+                      : "Your saved travel memory"}
+                  </Typography>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0, bgcolor: "#f8fbff" }}>
+                  {viewingMemory ? (
+                    <Box
+                      component="img"
+                      src={viewingMemory.src}
+                      alt={viewingMemory.title || "Memory preview"}
+                      sx={{
+                        width: "100%",
+                        maxHeight: "75vh",
+                        objectFit: "contain",
+                        display: "block",
+                        bgcolor: "#ffffff",
+                      }}
+                    />
+                  ) : null}
+                </DialogContent>
+                <DialogActions sx={{ px: 2, py: 1.5 }}>
+                  <Button
+                    onClick={handleCloseMemoryViewer}
+                    sx={{ ...compactPillButtonSx, color: "#2563eb" }}
+                  >
+                    Close
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
+              <Box sx={storyScrollableRowSx}>
+                {storyItems.map((item, index) => (
+                  <Box
+                    key={`story-${index}`}
+                    component={RouterLink}
+                    to={item.to}
+                    sx={{
+                      textDecoration: "none",
+                      textAlign: "center",
+                      flex: "0 0 auto",
+                      minWidth: { xs: 72, sm: 76 },
+                    }}
+                  >
+                    <Avatar
+                      src={item.image}
+                      alt={item.label}
+                      sx={{
+                        width: 58,
+                        height: 58,
+                        border: "2px solid #2563eb",
+                        bgcolor: "#fff",
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{ mt: 0.75, color: "#475569", display: "block" }}
+                    >
+                      {item.label}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
 
               {tabLoading && (
                 <Paper elevation={0} sx={sectionCardSx}>
@@ -3207,13 +3278,27 @@ const UserDashboard = () => {
                             />
                           </Grid>
                           <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              label="Phone number"
-                              value={form.phoneNumber}
-                              onChange={handleFieldChange("phoneNumber")}
-                            />
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="flex-start"
+                            >
+                              <TextField
+                                size="small"
+                                label="Code"
+                                value="+91"
+                                InputProps={{ readOnly: true }}
+                                sx={{ width: { xs: 84, sm: 90 } }}
+                              />
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Phone number"
+                                value={form.phoneNumber}
+                                onChange={handleFieldChange("phoneNumber")}
+                                placeholder="98765 43210"
+                              />
+                            </Stack>
                           </Grid>
                           <Grid item xs={12} sm={6}>
                             <TextField
@@ -3244,13 +3329,16 @@ const UserDashboard = () => {
                                 size="small"
                                 variant="outlined"
                                 startIcon={<PhotoCameraIcon />}
+                                disabled={uploadingAvatar}
                                 sx={{
                                   ...compactPillButtonSx,
                                   borderColor: "#ddd1c6",
                                   color: "#1f2937",
                                 }}
                               >
-                                Upload photo
+                                {uploadingAvatar
+                                  ? "Uploading..."
+                                  : "Upload profile image"}
                                 <input
                                   hidden
                                   accept="image/*"

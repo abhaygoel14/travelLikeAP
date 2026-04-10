@@ -5,23 +5,15 @@ import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey:
-    process.env.REACT_APP_FIREBASE_API_KEY ||
-    "AIzaSyD7wSG6SeMvOkfYvLgQLvyRHOV1B_I0_-I",
-  authDomain:
-    process.env.REACT_APP_FIREBASE_AUTH_DOMAIN ||
-    "travellikeap-83766.firebaseapp.com",
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "travellikeap-83766",
-  storageBucket:
-    process.env.REACT_APP_FIREBASE_STORAGE_BUCKET ||
-    "travellikeap-83766.firebasestorage.app",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY?.trim() || "",
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN?.trim() || "",
+  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL?.trim() || "",
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID?.trim() || "",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET?.trim() || "",
   messagingSenderId:
-    process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "514979990203",
-  appId:
-    process.env.REACT_APP_FIREBASE_APP_ID ||
-    "1:514979990203:web:894bda571fc2e2a839779e",
-  measurementId:
-    process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "G-YYKTDR72HV",
+    process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID?.trim() || "",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID?.trim() || "",
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID?.trim() || "",
 };
 
 const isMissingValue = (value = "") => {
@@ -32,6 +24,7 @@ const isMissingValue = (value = "") => {
 const requiredKeys = [
   "apiKey",
   "authDomain",
+  "databaseURL",
   "projectId",
   "storageBucket",
   "messagingSenderId",

@@ -206,16 +206,8 @@ const Register = () => {
     }
   };
 
-  const resolveProfilePhotoUrl = (firebaseUser, uploadedPhotoURL = "") => {
-    const providerPhotoURL = Array.isArray(firebaseUser?.providerData)
-      ? firebaseUser.providerData
-          .map((item) => String(item?.photoURL || "").trim())
-          .find(Boolean) || ""
-      : "";
-
-    return String(
-      uploadedPhotoURL || firebaseUser?.photoURL || providerPhotoURL || "",
-    ).trim();
+  const resolveProfilePhotoUrl = (_firebaseUser, uploadedPhotoURL = "") => {
+    return String(uploadedPhotoURL || "").trim();
   };
 
   const savePasswordForExistingGoogleAccount = async (nextCredentials) => {
@@ -277,9 +269,6 @@ const Register = () => {
 
       await updateProfile(result.user, {
         displayName: resolvedDisplayName,
-        photoURL: /^https?:\/\//i.test(String(resolvedProfilePhotoURL || ""))
-          ? resolvedProfilePhotoURL
-          : result.user.photoURL || null,
       });
 
       const userData = {
@@ -291,8 +280,9 @@ const Register = () => {
         email: result.user.email || nextCredentials.email,
         emailVerified: result.user.emailVerified,
         photoURL: resolvedProfilePhotoURL,
+        uploadedProfilePhoto: resolvedProfilePhotoURL,
         profileUrl: resolvedProfilePhotoURL,
-        imageUrl: result.user.photoURL || resolvedProfilePhotoURL || "",
+        imageUrl: resolvedProfilePhotoURL,
         role: "user",
         provider: "google.com,password",
         hasPassword: true,
@@ -419,9 +409,6 @@ const Register = () => {
 
       await updateProfile(userCredential.user, {
         displayName,
-        photoURL: /^https?:\/\//i.test(String(resolvedProfilePhotoURL || ""))
-          ? resolvedProfilePhotoURL
-          : null,
       });
 
       let successText = "Account created successfully.";
@@ -444,6 +431,7 @@ const Register = () => {
         email: userCredential.user.email,
         emailVerified: userCredential.user.emailVerified,
         photoURL: resolvedProfilePhotoURL,
+        uploadedProfilePhoto: resolvedProfilePhotoURL,
         profileUrl: resolvedProfilePhotoURL,
         imageUrl: resolvedProfilePhotoURL,
         role: "user",

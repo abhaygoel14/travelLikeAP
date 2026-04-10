@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -12,7 +13,11 @@ import {
   Row,
   Spinner,
 } from "reactstrap";
-import { get as getDbValue, ref as dbRef } from "firebase/database";
+import {
+  get as getDbValue,
+  ref as dbRef,
+  update as updateDb,
+} from "firebase/database";
 import {
   getDownloadURL,
   ref as storageRef,
@@ -76,7 +81,7 @@ const createEmptyCouponForm = () => ({
 });
 
 const AdminPortal = () => {
-  const { user, userRole } = useContext(AuthContext);
+  const { user, userRole, dispatch } = useContext(AuthContext);
   const { tours, loading, source } = useTours();
   const [form, setForm] = useState(() => tourToFormState(createEmptyTour()));
   const [selectedTourId, setSelectedTourId] = useState("");
@@ -87,10 +92,27 @@ const AdminPortal = () => {
   const [status, setStatus] = useState(null);
   const [previewMode, setPreviewMode] = useState("card");
   const [portalUsers, setPortalUsers] = useState([]);
+  const [portalUsersLoading, setPortalUsersLoading] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [promotingEmail, setPromotingEmail] = useState("");
   const [adminView, setAdminView] = useState("tours");
 
-  const canOpenPortal = Boolean(user) && FEATURE_FLAGS.adminTourPortal;
   const isAdminUser = String(userRole || "").toLowerCase() === "admin";
+  const canOpenPortal =
+    Boolean(user) && FEATURE_FLAGS.adminTourPortal && isAdminUser;
+  const normalizedAdminEmail = String(adminEmail || "")
+    .trim()
+    .toLowerCase();
+  const selectedAdminTarget = useMemo(
+    () =>
+      portalUsers.find(
+        (entry) =>
+          String(entry.email || "")
+            .trim()
+            .toLowerCase() === normalizedAdminEmail,
+      ) || null,
+    [normalizedAdminEmail, portalUsers],
+  );
   const currentPreviewTour = useMemo(() => formStateToTour(form), [form]);
   const previewDateLabel = formatTourDateRange(
     currentPreviewTour.startDate,
@@ -114,9 +136,14 @@ const AdminPortal = () => {
     let active = true;
 
     const loadPortalUsers = async () => {
+      if (active) {
+        setPortalUsersLoading(true);
+      }
+
       if (!realtimeDb) {
         if (active) {
           setPortalUsers([]);
+          setPortalUsersLoading(false);
         }
         return;
       }
@@ -148,19 +175,38 @@ const AdminPortal = () => {
                   "Traveler",
               ).trim();
             const email = String(entry?.email || "").trim();
+            const role =
+              String(entry?.role || "user")
+                .trim()
+                .toLowerCase() === "admin"
+                ? "admin"
+                : "user";
 
             return {
               uid,
+              displayName,
+              email,
+              role,
               label: email ? `${displayName} (${email})` : displayName,
             };
           })
-          .sort((left, right) => left.label.localeCompare(right.label));
+          .sort((left, right) => {
+            if (left.role !== right.role) {
+              return left.role === "admin" ? -1 : 1;
+            }
+
+            return left.label.localeCompare(right.label);
+          });
 
         setPortalUsers(nextUsers);
       } catch (error) {
         console.warn("Unable to load portal users:", error);
         if (active) {
           setPortalUsers([]);
+        }
+      } finally {
+        if (active) {
+          setPortalUsersLoading(false);
         }
       }
     };
@@ -391,7 +437,7 @@ const AdminPortal = () => {
     if (!canOpenPortal) {
       setStatus({
         color: "warning",
-        text: "Log in to save tours to Firebase.",
+        text: "Only admins can manage tours in Firebase.",
       });
       return;
     }
@@ -446,6 +492,144 @@ const AdminPortal = () => {
       });
     }
   };
+
+  const handleUpdateUserRole = async (
+    emailToUpdate = adminEmail,
+    nextRole = "admin",
+  ) => {
+    if (!isAdminUser) {
+      setStatus({
+        color: "warning",
+        text: "Only admins can update user roles.",
+      });
+      return;
+    }
+
+    if (!realtimeDb) {
+      setStatus({
+        color: "danger",
+        text: "Firebase is not configured for role updates.",
+      });
+      return;
+    }
+
+    const normalizedEmail = String(emailToUpdate || "")
+      .trim()
+      .toLowerCase();
+    const normalizedNextRole =
+      String(nextRole || "user")
+        .trim()
+        .toLowerCase() === "admin"
+        ? "admin"
+        : "user";
+
+    if (!normalizedEmail) {
+      setStatus({
+        color: "warning",
+        text:
+          normalizedNextRole === "admin"
+            ? "Enter a user email to grant admin access."
+            : "Enter a user email to remove admin access.",
+      });
+      return;
+    }
+
+    const matchingUser = portalUsers.find(
+      (entry) =>
+        String(entry.email || "")
+          .trim()
+          .toLowerCase() === normalizedEmail,
+    );
+
+    if (!matchingUser?.uid) {
+      setStatus({
+        color: "danger",
+        text: `No registered user found for ${normalizedEmail}.`,
+      });
+      return;
+    }
+
+    if (matchingUser.uid === user?.uid && normalizedNextRole !== "admin") {
+      setStatus({
+        color: "warning",
+        text: "You cannot remove your own admin access.",
+      });
+      return;
+    }
+
+    if (matchingUser.role === normalizedNextRole) {
+      setStatus({
+        color: "info",
+        text:
+          normalizedNextRole === "admin"
+            ? `${matchingUser.displayName || matchingUser.email} already has admin access.`
+            : `${matchingUser.displayName || matchingUser.email} is already a regular user.`,
+      });
+      return;
+    }
+
+    try {
+      setPromotingEmail(normalizedEmail);
+      await updateDb(dbRef(realtimeDb, `users/${matchingUser.uid}`), {
+        role: normalizedNextRole,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setPortalUsers((prev) =>
+        prev
+          .map((entry) =>
+            entry.uid === matchingUser.uid
+              ? { ...entry, role: normalizedNextRole }
+              : entry,
+          )
+          .sort((left, right) => {
+            if (left.role !== right.role) {
+              return left.role === "admin" ? -1 : 1;
+            }
+
+            return left.label.localeCompare(right.label);
+          }),
+      );
+
+      if (matchingUser.uid === user?.uid) {
+        dispatch({
+          type: "SET_USER",
+          payload: {
+            ...user,
+            role: normalizedNextRole,
+          },
+        });
+      }
+
+      setAdminEmail("");
+      setStatus({
+        color: "success",
+        text:
+          normalizedNextRole === "admin"
+            ? `${matchingUser.displayName || matchingUser.email} is now an admin.`
+            : `${matchingUser.displayName || matchingUser.email} is now a user.`,
+      });
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to update that user role right now.",
+      });
+    } finally {
+      setPromotingEmail("");
+    }
+  };
+
+  if (!FEATURE_FLAGS.adminTourPortal) {
+    return <Navigate to="/home" replace />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdminUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <>
@@ -509,6 +693,13 @@ const AdminPortal = () => {
                   onClick={() => setAdminView("policies")}
                 >
                   Policy pages
+                </button>
+                <button
+                  type="button"
+                  className={`admin-section-nav__btn ${adminView === "users" ? "active" : ""}`}
+                  onClick={() => setAdminView("users")}
+                >
+                  Users & roles
                 </button>
               </div>
             </Col>
@@ -1347,6 +1538,186 @@ const AdminPortal = () => {
                 </Row>
               )}
             </>
+          ) : adminView === "users" ? (
+            <Row className="g-4">
+              <Col lg="4">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>User access</h4>
+                      <p>Grant or remove admin access for a registered user.</p>
+                    </div>
+                    <Badge color={isAdminUser ? "success" : "secondary"} pill>
+                      {isAdminUser ? "Can edit roles" : "View only"}
+                    </Badge>
+                  </div>
+
+                  <Form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      handleUpdateUserRole(
+                        adminEmail,
+                        selectedAdminTarget?.role === "admin"
+                          ? "user"
+                          : "admin",
+                      );
+                    }}
+                  >
+                    <FormGroup>
+                      <Label for="adminEmail">User email</Label>
+                      <Input
+                        id="adminEmail"
+                        type="email"
+                        value={adminEmail}
+                        onChange={(event) => setAdminEmail(event.target.value)}
+                        placeholder="name@example.com"
+                        disabled={!isAdminUser}
+                      />
+                      <small className="text-muted d-block mt-2">
+                        Enter a registered email to grant or remove admin
+                        access.
+                      </small>
+                    </FormGroup>
+
+                    <div className="admin-form-actions">
+                      {selectedAdminTarget?.uid === user?.uid &&
+                      selectedAdminTarget?.role === "admin" ? (
+                        <small className="text-muted fw-semibold">
+                          Your current admin access cannot be removed here.
+                        </small>
+                      ) : (
+                        <Button
+                          color={
+                            selectedAdminTarget?.role === "admin"
+                              ? "danger"
+                              : "primary"
+                          }
+                          outline={selectedAdminTarget?.role === "admin"}
+                          type="submit"
+                          disabled={
+                            !isAdminUser ||
+                            !normalizedAdminEmail ||
+                            promotingEmail === normalizedAdminEmail
+                          }
+                        >
+                          {promotingEmail === normalizedAdminEmail
+                            ? "Updating..."
+                            : selectedAdminTarget?.role === "admin"
+                              ? "Remove admin"
+                              : "Make admin"}
+                        </Button>
+                      )}
+                    </div>
+                  </Form>
+                </div>
+              </Col>
+
+              <Col lg="8">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Portal users</h4>
+                      <p>
+                        {portalUsersLoading
+                          ? "Loading users..."
+                          : `${portalUsers.length} users found`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {portalUsersLoading ? (
+                    <div className="admin-loader">
+                      <Spinner size="sm" /> Loading users...
+                    </div>
+                  ) : portalUsers.length ? (
+                    <div className="admin-user-list">
+                      {portalUsers.map((entry) => {
+                        const normalizedEntryEmail = String(entry.email || "")
+                          .trim()
+                          .toLowerCase();
+                        const isUpdatingThisUser =
+                          Boolean(normalizedEntryEmail) &&
+                          promotingEmail === normalizedEntryEmail;
+
+                        return (
+                          <div key={entry.uid} className="admin-user-item">
+                            <div>
+                              <strong>
+                                {entry.displayName || entry.label}
+                              </strong>
+                              <span>{entry.email || "No email available"}</span>
+                            </div>
+                            <div className="admin-user-actions">
+                              <Badge
+                                color={
+                                  entry.role === "admin"
+                                    ? "success"
+                                    : "secondary"
+                                }
+                                pill
+                              >
+                                {entry.role === "admin" ? "Admin" : "User"}
+                              </Badge>
+                              {entry.email ? (
+                                entry.role === "admin" ? (
+                                  entry.uid === user?.uid ? (
+                                    <small className="text-muted fw-semibold">
+                                      Current admin
+                                    </small>
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      color="danger"
+                                      outline
+                                      size="sm"
+                                      disabled={
+                                        !isAdminUser || isUpdatingThisUser
+                                      }
+                                      onClick={() =>
+                                        handleUpdateUserRole(
+                                          entry.email,
+                                          "user",
+                                        )
+                                      }
+                                    >
+                                      {isUpdatingThisUser
+                                        ? "Updating..."
+                                        : "Remove admin"}
+                                    </Button>
+                                  )
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    color="primary"
+                                    outline
+                                    size="sm"
+                                    disabled={
+                                      !isAdminUser || isUpdatingThisUser
+                                    }
+                                    onClick={() =>
+                                      handleUpdateUserRole(entry.email, "admin")
+                                    }
+                                  >
+                                    {isUpdatingThisUser
+                                      ? "Updating..."
+                                      : "Make admin"}
+                                  </Button>
+                                )
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="admin-preview-note">
+                      <h5>No users found</h5>
+                      <p>User accounts will appear here once people sign in.</p>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            </Row>
           ) : (
             <Row className="g-4">
               <Col lg="12">

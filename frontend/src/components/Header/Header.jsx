@@ -18,7 +18,9 @@ const Header = () => {
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const { user, dispatch, userRole } = useContext(AuthContext);
-  const canOpenAdminPortal = FEATURE_FLAGS.adminTourPortal && Boolean(user);
+  const isAdminUser = String(userRole || "").toLowerCase() === "admin";
+  const canOpenAdminPortal =
+    FEATURE_FLAGS.adminTourPortal && Boolean(user) && isAdminUser;
 
   const navLinks = useMemo(() => {
     const links = user
@@ -28,8 +30,7 @@ const Header = () => {
     if (canOpenAdminPortal) {
       links.push({
         path: "/admin",
-        display:
-          String(userRole || "").toLowerCase() === "admin" ? "Admin" : "Portal",
+        display: "Admin",
       });
     }
 
@@ -45,6 +46,26 @@ const Header = () => {
       "Traveler";
 
     return source.split("@")[0].trim().split(" ")[0] || "Traveler";
+  }, [user]);
+
+  const profileAvatarSrc = useMemo(() => {
+    const candidates = [
+      user?.uploadedProfilePhoto,
+      user?.profileUrl,
+      user?.imageUrl,
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+
+    return (
+      candidates.find(
+        (value) =>
+          value.startsWith("data:") ||
+          /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(
+            value,
+          ),
+      ) || userPlaceholder
+    );
   }, [user]);
 
   const logout = () => {
@@ -112,12 +133,7 @@ const Header = () => {
                       onClick={() => navigate("/dashboard")}
                     >
                       <img
-                        src={
-                          user?.profileUrl ||
-                          user?.imageUrl ||
-                          user?.photoURL ||
-                          userPlaceholder
-                        }
+                        src={profileAvatarSrc}
                         alt={firstName}
                         className="profile__avatar"
                         onError={(event) => {

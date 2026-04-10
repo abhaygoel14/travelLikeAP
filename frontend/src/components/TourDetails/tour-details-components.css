@@ -1255,7 +1255,8 @@
 }
 
 .fee-info-wrap:hover .fee-info-popover,
-.fee-info-wrap:focus-within .fee-info-popover {
+.fee-info-wrap:focus-within .fee-info-popover,
+.fee-info-wrap.is-open .fee-info-popover {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
@@ -1877,8 +1878,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .td-details-grid,
-  .td-overview-grid,
   .td-packing ul,
   .td-inclusion ul,
   .td-review-list {
@@ -1902,6 +1901,28 @@
     flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
+  }
+
+  .td-review-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.2rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  .td-review-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .td-review-item {
+    min-width: 84%;
+    flex: 0 0 84%;
+    scroll-snap-align: start;
   }
 
   .td-review-snapshot-copy,
@@ -1928,6 +1949,34 @@
     margin-bottom: 1rem;
   }
 
+  .td-details-grid,
+  .td-overview-grid,
+  .td-include-exclude {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+
+  .td-details-grid::-webkit-scrollbar,
+  .td-overview-grid::-webkit-scrollbar,
+  .td-include-exclude::-webkit-scrollbar {
+    display: none;
+  }
+
+  .td-detail-tile,
+  .td-overview-grid > div,
+  .td-include-exclude .ie-col {
+    min-width: 84%;
+    flex: 0 0 84%;
+    scroll-snap-align: start;
+  }
+
   .td-title-row {
     flex-direction: column;
     align-items: stretch;
@@ -1942,10 +1991,26 @@
     justify-content: center;
   }
 
+  .td-meta-strip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.2rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .td-meta-strip::-webkit-scrollbar {
+    display: none;
+  }
+
   .td-meta-pill {
-    width: 100%;
+    width: auto;
+    min-width: max-content;
+    flex: 0 0 auto;
     justify-content: flex-start;
     border-radius: 14px;
+    white-space: nowrap;
   }
 
   .td-section-nav {
@@ -1984,23 +2049,47 @@
   }
 
   .price-trust-row {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0.6rem;
+    padding-bottom: 0.2rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .price-trust-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .price-trust-row span {
+    min-width: 138px;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .traveler-mode-switch {
-    grid-template-columns: 1fr;
+    display: flex;
+    grid-template-columns: none;
+    gap: 0.55rem;
+  }
+
+  .traveler-mode-btn {
+    flex: 1 1 0;
   }
 
   .traveler-picker {
     padding: 0.8rem;
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .traveler-stepper,
   .traveler-static-chip {
-    margin-left: 0;
-    align-self: flex-start;
+    margin-left: auto;
+    align-self: center;
   }
 
   .traveler-stepper-btn {
@@ -2106,9 +2195,28 @@
     white-space: normal;
   }
 
+  .fee-info-wrap {
+    position: relative;
+  }
+
   .fee-info-popover {
-    left: 0;
+    left: 50%;
     right: auto;
+    transform: translateX(-50%) translateY(6px);
+    min-width: min(190px, calc(100vw - 64px));
+    max-width: calc(100vw - 64px);
+    white-space: normal;
+  }
+
+  .fee-info-wrap:hover .fee-info-popover,
+  .fee-info-wrap:focus-within .fee-info-popover,
+  .fee-info-wrap.is-open .fee-info-popover {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .fee-info-popover::before {
+    right: 50%;
+    transform: translateX(50%) rotate(45deg);
   }
 
   .td-gallery-tile {

@@ -85,6 +85,26 @@ const resolveProfileName = (...sources) => {
   return "";
 };
 
+const isUploadedProfilePhoto = (value = "") => {
+  const trimmedValue = String(value || "").trim();
+
+  if (!trimmedValue) {
+    return false;
+  }
+
+  return (
+    trimmedValue.startsWith("data:") ||
+    /firebasestorage\.googleapis\.com|storage\.googleapis\.com/i.test(
+      trimmedValue,
+    )
+  );
+};
+
+const resolveUploadedProfilePhoto = (...values) =>
+  values
+    .map((value) => String(value || "").trim())
+    .find((value) => isUploadedProfilePhoto(value)) || "";
+
 const getPasswordValidationMessage = (password = "") => {
   if (!password) return "Please enter your password.";
   if (password.length < 8) {
@@ -272,13 +292,11 @@ const Login = () => {
       : "";
     const fallbackDisplayName =
       resolveProfileName(extraData, firebaseUser) || "Traveler";
-    const resolvedFallbackPhoto = String(
-      extraData.profileUrl ||
-        extraData.imageUrl ||
-        firebaseUser.photoURL ||
-        providerPhotoURL ||
-        "",
-    ).trim();
+    const resolvedFallbackPhoto = resolveUploadedProfilePhoto(
+      extraData.uploadedProfilePhoto,
+      extraData.profileUrl,
+      extraData.imageUrl,
+    );
     const fallbackProfile = {
       uid: firebaseUser.uid,
       email: firebaseUser.email || "",
@@ -287,10 +305,9 @@ const Login = () => {
       displayName: fallbackDisplayName,
       username: extraData.username || fallbackDisplayName,
       photoURL: resolvedFallbackPhoto,
+      uploadedProfilePhoto: resolvedFallbackPhoto,
       profileUrl: resolvedFallbackPhoto,
-      imageUrl: String(
-        extraData.imageUrl || providerPhotoURL || resolvedFallbackPhoto || "",
-      ).trim(),
+      imageUrl: resolvedFallbackPhoto,
       phoneNumber: firebaseUser.phoneNumber || "",
       role: "user",
       provider:
@@ -335,16 +352,14 @@ const Login = () => {
     const derivedLastName = String(
       existingProfile.lastName || extraData.lastName || "",
     ).trim();
-    const resolvedProfilePhoto = String(
-      existingProfile.profileUrl ||
-        existingProfile.imageUrl ||
-        existingProfile.photoURL ||
-        extraData.profileUrl ||
-        extraData.imageUrl ||
-        firebaseUser.photoURL ||
-        providerPhotoURL ||
-        "",
-    ).trim();
+    const resolvedProfilePhoto = resolveUploadedProfilePhoto(
+      existingProfile.uploadedProfilePhoto,
+      existingProfile.profileUrl,
+      existingProfile.imageUrl,
+      extraData.uploadedProfilePhoto,
+      extraData.profileUrl,
+      extraData.imageUrl,
+    );
 
     const baseProfile = {
       uid: firebaseUser.uid,
@@ -355,14 +370,9 @@ const Login = () => {
       username:
         existingProfile.username || extraData.username || resolvedDisplayName,
       photoURL: resolvedProfilePhoto,
+      uploadedProfilePhoto: resolvedProfilePhoto,
       profileUrl: resolvedProfilePhoto,
-      imageUrl: String(
-        existingProfile.imageUrl ||
-          extraData.imageUrl ||
-          providerPhotoURL ||
-          resolvedProfilePhoto ||
-          "",
-      ).trim(),
+      imageUrl: resolvedProfilePhoto,
       phoneNumber:
         firebaseUser.phoneNumber || existingProfile.phoneNumber || "",
       role: existingProfile.role || "user",

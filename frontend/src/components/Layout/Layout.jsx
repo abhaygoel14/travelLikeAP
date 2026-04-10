@@ -11,6 +11,10 @@ const Layout = () => {
     location.pathname === "/under-construction" || location.pathname === "/";
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
     setRouteLoading(true);
 
     const timer = window.setTimeout(() => {

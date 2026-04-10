@@ -32,7 +32,7 @@ const Home = () => {
   return (
     <>
       {/* ========== HERO SECTION ========== */}
-      <section>
+      <section className="home__hero-section">
         <Container>
           <Row>
             <Col lg="6">

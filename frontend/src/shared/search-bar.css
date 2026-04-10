@@ -17,9 +17,15 @@
   gap: 0.75rem;
 }
 
-.form__group span {
+.form__group > span {
   font-size: 1.8rem;
   color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.form__group > span i {
+  font-size: inherit;
+  color: inherit;
 }
 
 .form__group {
@@ -100,6 +106,8 @@
   border-radius: 10px;
   color: var(--heading-color);
   text-align: left;
+  font-size: 0.96rem;
+  line-height: 1.35;
 }
 
 .search__suggestion:hover {
@@ -108,6 +116,25 @@
 
 .search__suggestion i {
   color: var(--primary-color);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.search__suggestion span {
+  display: block;
+  color: var(--heading-color);
+  font-size: 0.96rem;
+  font-weight: 500;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.search__suggestion-empty {
+  padding: 0.8rem 0.75rem;
+  border-radius: 10px;
+  color: var(--text-color);
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
 
 .search__bar-meta {

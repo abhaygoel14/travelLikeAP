@@ -233,6 +233,42 @@
   margin-bottom: 1rem;
 }
 
+.admin-user-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+}
+
+.admin-user-item strong,
+.admin-user-item span {
+  display: block;
+}
+
+.admin-user-item span {
+  margin-top: 0.15rem;
+  color: #64748b;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.admin-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .admin-policy-editor {
   position: relative;
 }
@@ -287,8 +323,14 @@
 
 @media (max-width: 768px) {
   .admin-portal-intro,
-  .admin-panel-card__header {
+  .admin-panel-card__header,
+  .admin-user-item {
     flex-direction: column;
+  }
+
+  .admin-user-item,
+  .admin-user-actions {
+    align-items: flex-start;
   }
 
   .admin-rich-editor {

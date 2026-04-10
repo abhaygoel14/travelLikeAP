@@ -91,12 +91,16 @@ export const AuthContextProvider = ({ children }) => {
   const [state, dispatch] = useReducer(AuthReducer, initial_state);
 
   useEffect(() => {
-    if (state.user === null) {
-      localStorage.removeItem("user");
-      localStorage.removeItem("userRole");
-    } else {
-      localStorage.setItem("user", JSON.stringify(state.user));
-      localStorage.setItem("userRole", state.userRole || "");
+    try {
+      if (state.user === null) {
+        localStorage.removeItem("user");
+        localStorage.removeItem("userRole");
+      } else {
+        localStorage.setItem("user", JSON.stringify(state.user));
+        localStorage.setItem("userRole", state.userRole || "");
+      }
+    } catch (error) {
+      console.warn("Unable to cache user session locally:", error);
     }
   }, [state.user, state.userRole]);
 

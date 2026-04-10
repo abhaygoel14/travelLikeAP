@@ -22,6 +22,8 @@ const SearchBar = ({
     endDate: queryParams.get("endDate") || "",
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const cityQuery = String(filters.city || "").trim();
+  const shouldShowSuggestionDropdown = showSuggestions && Boolean(cityQuery);
 
   const locationSuggestions = useMemo(() => {
     const query = String(filters.city || "")
@@ -188,9 +190,7 @@ const SearchBar = ({
                 placeholder="Where are you going?"
                 value={filters.city}
                 onChange={(event) => updateField("city", event.target.value)}
-                onFocus={() =>
-                  setShowSuggestions(Boolean(locationSuggestions.length))
-                }
+                onFocus={() => setShowSuggestions(Boolean(cityQuery))}
                 onBlur={() => {
                   window.setTimeout(() => {
                     setShowSuggestions(false);
@@ -198,20 +198,26 @@ const SearchBar = ({
                 }}
               />
 
-              {showSuggestions && locationSuggestions.length ? (
+              {shouldShowSuggestionDropdown ? (
                 <div className="search__suggestions">
-                  {locationSuggestions.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      className="search__suggestion"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => handleSuggestionSelect(item)}
-                    >
-                      <i className="ri-map-pin-2-line" aria-hidden="true" />
-                      <span>{item}</span>
-                    </button>
-                  ))}
+                  {locationSuggestions.length ? (
+                    locationSuggestions.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className="search__suggestion"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => handleSuggestionSelect(item)}
+                      >
+                        <i className="ri-map-pin-2-line" aria-hidden="true" />
+                        <span>{item}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="search__suggestion-empty">
+                      No results found for "{cityQuery}"
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
