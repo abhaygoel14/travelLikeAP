@@ -285,11 +285,6 @@ const Login = () => {
       requestedProviders.includes("password") ||
       Boolean(extraData.hasPassword);
 
-    const providerPhotoURL = Array.isArray(firebaseUser.providerData)
-      ? firebaseUser.providerData
-          .map((item) => String(item?.photoURL || "").trim())
-          .find(Boolean) || ""
-      : "";
     const fallbackDisplayName =
       resolveProfileName(extraData, firebaseUser) || "Traveler";
     const resolvedFallbackPhoto = resolveUploadedProfilePhoto(

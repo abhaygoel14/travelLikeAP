@@ -35,7 +35,7 @@ const Header = () => {
     }
 
     return links;
-  }, [canOpenAdminPortal, user, userRole]);
+  }, [canOpenAdminPortal, user]);
 
   const firstName = useMemo(() => {
     const source =

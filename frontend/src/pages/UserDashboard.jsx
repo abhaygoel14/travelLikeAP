@@ -39,7 +39,6 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
 import { updateProfile, verifyBeforeUpdateEmail } from "firebase/auth";
 import { get, ref, update } from "firebase/database";
 import {
