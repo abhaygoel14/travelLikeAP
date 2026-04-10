@@ -56,30 +56,6 @@ import { FEATURE_FLAGS } from "../config/featureFlags";
 import { auth, realtimeDb, storage } from "../utils/firebaseConfig";
 import { formatPrice, formatTourDateRange } from "../utils/tourSchema";
 
-const defaultTrips = [
-  {
-    title: "Kuala Lumpur - Ipoh",
-    city: "Malaysia",
-    date: "15 Jul 2025",
-    status: "5 Days, 4 Nights",
-    budget: 1200,
-  },
-  {
-    title: "Sapa - Ninh Binh",
-    city: "Vietnam",
-    date: "24 Jul 2025",
-    status: "4 Days, 3 Nights",
-    budget: 890,
-  },
-  {
-    title: "Bangkok Weekend",
-    city: "Thailand",
-    date: "02 Aug 2025",
-    status: "3 Days, 2 Nights",
-    budget: 640,
-  },
-];
-
 const defaultPayments = [
   {
     label: "Visa •••• 4242",
@@ -101,6 +77,35 @@ const defaultReviews = [
     text: "Save your travel memories and keep everything in one dashboard.",
   },
 ];
+
+const DEMO_UPCOMING_TRIP_TITLES = new Set([
+  "kuala lumpur - ipoh",
+  "sapa - ninh binh",
+  "bangkok weekend",
+]);
+
+const normalizeUpcomingTrips = (trips = []) => {
+  if (!Array.isArray(trips)) {
+    return [];
+  }
+
+  return trips.filter(Boolean).filter((trip) => {
+    const title = String(trip?.title || "")
+      .trim()
+      .toLowerCase();
+    const city = String(trip?.city || "")
+      .trim()
+      .toLowerCase();
+    const hasBookingContent = Boolean(
+      title ||
+      city ||
+      String(trip?.date || "").trim() ||
+      String(trip?.tourId || trip?.id || trip?.bookingId || "").trim(),
+    );
+
+    return hasBookingContent && !DEMO_UPCOMING_TRIP_TITLES.has(title);
+  });
+};
 
 const MAX_AVATAR_FILE_SIZE = 1024 * 1024;
 const MAX_FIREBASE_PHOTO_URL_LENGTH = 2048;
@@ -227,8 +232,15 @@ const compactTripCardSx = {
 };
 
 const instagramGalleryGridSx = {
-  columnCount: { xs: 2, sm: 3, md: 4 },
-  columnGap: "6px",
+  display: { xs: "grid", md: "block" },
+  gridTemplateColumns: {
+    xs: "repeat(2, minmax(0, 1fr))",
+    sm: "repeat(3, minmax(0, 1fr))",
+    md: "unset",
+  },
+  gap: { xs: "6px", md: 0 },
+  columnCount: { md: 4 },
+  columnGap: { md: "6px" },
   bgcolor: "#ffffff",
   borderRadius: 4,
   overflow: "hidden",
@@ -239,8 +251,9 @@ const instagramGalleryGridSx = {
 const instagramMemoryCardSx = {
   position: "relative",
   width: "100%",
-  mb: "6px",
-  borderRadius: 0,
+  height: "100%",
+  mb: { xs: 0, md: "6px" },
+  borderRadius: { xs: 2.25, md: 0 },
   overflow: "hidden",
   display: "block",
   breakInside: "avoid",
@@ -608,10 +621,7 @@ const normalizeProfile = (user = {}) => {
           .map((item) => item.trim())
           .filter(Boolean),
     gallery: normalizeMemoryGallery(user.gallery),
-    upcomingTrips:
-      Array.isArray(user.upcomingTrips) && user.upcomingTrips.length
-        ? user.upcomingTrips
-        : defaultTrips,
+    upcomingTrips: normalizeUpcomingTrips(user.upcomingTrips),
     paymentOptions:
       Array.isArray(user.paymentOptions) && user.paymentOptions.length
         ? user.paymentOptions
@@ -748,6 +758,7 @@ const UserDashboard = () => {
     () => (profile.upcomingTrips || []).slice(0, 4),
     [profile.upcomingTrips],
   );
+  const hasUpcomingBookings = sideTrips.length > 0;
 
   const memories = useMemo(() => profile.gallery || [], [profile.gallery]);
 
@@ -956,13 +967,13 @@ const UserDashboard = () => {
     () => [
       {
         name: "Riya S.",
-        place: sideTrips[0]?.title || "Kuala Lumpur - Ipoh",
+        place: sideTrips[0]?.title || "Your saved trip",
         note: "added this to the group plan",
         to: featuredPlan ? `/tours/${featuredPlan.id}` : "/tours",
       },
       {
         name: "Aman K.",
-        place: sideTrips[1]?.title || "Sapa - Ninh Binh",
+        place: sideTrips[1]?.title || "Another saved trip",
         note: "booked this trip for next month",
         to: recommendedPlaces[1]
           ? `/tours/${recommendedPlaces[1].id}`
@@ -2672,125 +2683,168 @@ const UserDashboard = () => {
                     </Button>
                   </Stack>
 
-                  <Grid
-                    container
-                    spacing={{ xs: 1.5, md: 2 }}
-                    sx={mobileScrollableRowSx}
-                  >
-                    {itineraryTrips.map((trip, index) => (
-                      <Grid
-                        item
-                        xs={12}
-                        md={6}
-                        key={`${trip.title}-${index}-itinerary`}
-                        sx={{ display: "flex" }}
-                      >
-                        <Card sx={compactTripCardSx}>
-                          <Box
-                            component="img"
-                            src={trip.photo}
-                            alt={trip.title}
-                            sx={{
-                              width: "100%",
-                              height: { xs: 170, md: 156 },
-                              objectFit: "cover",
-                              bgcolor: "#dbeafe",
-                            }}
-                          />
-                          <CardContent
-                            sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}
-                          >
-                            <Stack
-                              direction="row"
-                              justifyContent="space-between"
-                              alignItems="flex-start"
-                              spacing={1}
+                  {itineraryTrips.length ? (
+                    <Grid
+                      container
+                      spacing={{ xs: 1.5, md: 2 }}
+                      sx={mobileScrollableRowSx}
+                    >
+                      {itineraryTrips.map((trip, index) => (
+                        <Grid
+                          item
+                          xs={12}
+                          md={6}
+                          key={`${trip.title}-${index}-itinerary`}
+                          sx={{ display: "flex" }}
+                        >
+                          <Card sx={compactTripCardSx}>
+                            <Box
+                              component="img"
+                              src={trip.photo}
+                              alt={trip.title}
+                              sx={{
+                                width: "100%",
+                                height: { xs: 170, md: 156 },
+                                objectFit: "cover",
+                                bgcolor: "#dbeafe",
+                              }}
+                            />
+                            <CardContent
+                              sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}
                             >
-                              <Box>
-                                <Typography fontWeight={800} color="#1c1917">
-                                  {trip.title}
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                alignItems="flex-start"
+                                spacing={1}
+                              >
+                                <Box>
+                                  <Typography fontWeight={800} color="#1c1917">
+                                    {trip.title}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {trip.city || "Travel destination"} •{" "}
+                                    {trip.date || "Coming soon"}
+                                  </Typography>
+                                </Box>
+                                <Chip
+                                  size="small"
+                                  label={trip.status || "Upcoming"}
+                                  sx={{ bgcolor: "#eff6ff", color: "#2563eb" }}
+                                />
+                              </Stack>
+
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: 1 }}
+                              >
+                                {trip.description}
+                              </Typography>
+
+                              <Stack
+                                direction="row"
+                                spacing={0.75}
+                                useFlexGap
+                                flexWrap="wrap"
+                                sx={{ mt: 1.25 }}
+                              >
+                                <Chip
+                                  size="small"
+                                  label={`Budget ${formatPrice(trip.budget || trip.price || 0)}`}
+                                />
+                                <Chip
+                                  size="small"
+                                  label={`⭐ ${trip.rating}`}
+                                />
+                              </Stack>
+
+                              <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                spacing={0.75}
+                                useFlexGap
+                                flexWrap="wrap"
+                                sx={{ mt: 1.5 }}
+                              >
+                                <Button
+                                  size="small"
+                                  component={RouterLink}
+                                  to={trip.route}
+                                  sx={{
+                                    ...compactPillButtonSx,
+                                    color: "#2563eb",
+                                  }}
                                 >
-                                  {trip.city || "Travel destination"} •{" "}
-                                  {trip.date || "Coming soon"}
-                                </Typography>
-                              </Box>
-                              <Chip
-                                size="small"
-                                label={trip.status || "Upcoming"}
-                                sx={{ bgcolor: "#eff6ff", color: "#2563eb" }}
-                              />
-                            </Stack>
-
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ mt: 1 }}
-                            >
-                              {trip.description}
-                            </Typography>
-
-                            <Stack
-                              direction="row"
-                              spacing={0.75}
-                              useFlexGap
-                              flexWrap="wrap"
-                              sx={{ mt: 1.25 }}
-                            >
-                              <Chip
-                                size="small"
-                                label={`Budget ${formatPrice(trip.budget || trip.price || 0)}`}
-                              />
-                              <Chip size="small" label={`⭐ ${trip.rating}`} />
-                            </Stack>
-
-                            <Stack
-                              direction={{ xs: "column", sm: "row" }}
-                              spacing={0.75}
-                              useFlexGap
-                              flexWrap="wrap"
-                              sx={{ mt: 1.5 }}
-                            >
-                              <Button
-                                size="small"
-                                component={RouterLink}
-                                to={trip.route}
-                                sx={{
-                                  ...compactPillButtonSx,
-                                  color: "#2563eb",
-                                }}
-                              >
-                                View tour
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                startIcon={
-                                  <DownloadRoundedIcon fontSize="small" />
-                                }
-                                onClick={() => handleDownloadItinerary(trip)}
-                                sx={{
-                                  ...compactPillButtonSx,
-                                  bgcolor: "#2563eb",
-                                  color: "#fff",
-                                  boxShadow: "none",
-                                  "&:hover": {
-                                    bgcolor: "#1d4ed8",
+                                  View tour
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  startIcon={
+                                    <DownloadRoundedIcon fontSize="small" />
+                                  }
+                                  onClick={() => handleDownloadItinerary(trip)}
+                                  sx={{
+                                    ...compactPillButtonSx,
+                                    bgcolor: "#2563eb",
+                                    color: "#fff",
                                     boxShadow: "none",
-                                  },
-                                }}
-                              >
-                                Download
-                              </Button>
-                            </Stack>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
+                                    "&:hover": {
+                                      bgcolor: "#1d4ed8",
+                                      boxShadow: "none",
+                                    },
+                                  }}
+                                >
+                                  Download
+                                </Button>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        bgcolor: "#f8fbff",
+                        border: "1px dashed #bfdbfe",
+                      }}
+                    >
+                      <Typography fontWeight={700} sx={{ color: "#1c1917" }}>
+                        No booking is done yet
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Book a trip first and your itinerary will appear here.
+                      </Typography>
+                      <Button
+                        size="small"
+                        component={RouterLink}
+                        to="/tours"
+                        variant="contained"
+                        sx={{
+                          ...compactPillButtonSx,
+                          mt: 1.5,
+                          bgcolor: "#2563eb",
+                          color: "#fff",
+                          "&:hover": {
+                            bgcolor: "#1d4ed8",
+                          },
+                        }}
+                      >
+                        Explore Trips
+                      </Button>
+                    </Paper>
+                  )}
                 </Paper>
               )}
 
@@ -3023,7 +3077,7 @@ const UserDashboard = () => {
                     {memories.length ? (
                       memories.map((memory, index) => {
                         const desktopHeights = [320, 430, 360, 300, 250, 340];
-                        const mobileHeights = [180, 240, 210, 190];
+                        const mobileHeights = [132, 132, 132, 132];
 
                         return (
                           <Box
@@ -3394,119 +3448,177 @@ const UserDashboard = () => {
                                 Remember your upcoming trips.
                               </Typography>
                             </Box>
-                            <Button
-                              size="small"
-                              component={RouterLink}
-                              to={
-                                featuredPlan
-                                  ? `/tours/${featuredPlan.id}`
-                                  : "/tours"
-                              }
-                              sx={{ ...compactPillButtonSx, color: "#2563eb" }}
-                            >
-                              Details
-                            </Button>
+                            {hasUpcomingBookings ? (
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to={
+                                  featuredPlan
+                                    ? `/tours/${featuredPlan.id}`
+                                    : "/tours"
+                                }
+                                sx={{
+                                  ...compactPillButtonSx,
+                                  color: "#2563eb",
+                                  "&:hover": {
+                                    bgcolor: "rgba(37, 99, 235, 0.08)",
+                                    color: "#2563eb",
+                                  },
+                                }}
+                              >
+                                Details
+                              </Button>
+                            ) : null}
                           </Stack>
 
-                          <Grid container spacing={1.5}>
-                            {sideTrips.slice(0, 2).map((trip, index) => (
-                              <Grid
-                                item
-                                xs={12}
-                                sm={6}
-                                key={`${trip.title}-${index}`}
-                              >
-                                <Card sx={compactTripCardSx}>
-                                  <Box
-                                    component="img"
-                                    src={
-                                      galleryStrip[index] || featuredPlan?.photo
-                                    }
-                                    alt={trip.title}
-                                    sx={{
-                                      width: "100%",
-                                      height: { xs: 150, md: 132 },
-                                      objectFit: "cover",
-                                    }}
-                                  />
-                                  <CardContent
-                                    sx={{ p: 1.4, "&:last-child": { pb: 1.4 } }}
-                                  >
-                                    <Typography
-                                      fontWeight={700}
-                                      sx={{ color: "#1c1917" }}
-                                    >
-                                      {trip.title}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      display="block"
-                                    >
-                                      {trip.city || "Travel destination"}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      sx={{ color: "#64748b" }}
-                                    >
-                                      {trip.date} • {trip.status}
-                                    </Typography>
-
-                                    <Stack
-                                      direction="row"
-                                      justifyContent="space-between"
-                                      alignItems="center"
-                                      sx={{ mt: 1.5 }}
+                          {hasUpcomingBookings ? (
+                            <Grid container spacing={1.5}>
+                              {sideTrips.slice(0, 2).map((trip, index) => (
+                                <Grid
+                                  item
+                                  xs={12}
+                                  sm={6}
+                                  key={`${trip.title}-${index}`}
+                                >
+                                  <Card sx={compactTripCardSx}>
+                                    <Box
+                                      component="img"
+                                      src={
+                                        galleryStrip[index] ||
+                                        featuredPlan?.photo
+                                      }
+                                      alt={trip.title}
+                                      sx={{
+                                        width: "100%",
+                                        height: { xs: 150, md: 132 },
+                                        objectFit: "cover",
+                                      }}
+                                    />
+                                    <CardContent
+                                      sx={{
+                                        p: 1.4,
+                                        "&:last-child": { pb: 1.4 },
+                                      }}
                                     >
                                       <Typography
-                                        fontSize="0.82rem"
                                         fontWeight={700}
+                                        sx={{ color: "#1c1917" }}
                                       >
-                                        Budget:{" "}
-                                        {formatPrice(trip.budget || 990)}
+                                        {trip.title}
                                       </Typography>
-                                      <Stack direction="row" spacing={0.5}>
-                                        <Button
-                                          size="small"
-                                          onClick={() =>
-                                            handleEditCollectionItem(
-                                              "upcomingTrips",
-                                              index,
-                                            )
-                                          }
-                                          sx={{
-                                            ...compactPillButtonSx,
-                                            minWidth: 0,
-                                            px: 1,
-                                          }}
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                        display="block"
+                                      >
+                                        {trip.city || "Travel destination"}
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#64748b" }}
+                                      >
+                                        {trip.date} • {trip.status}
+                                      </Typography>
+
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                        sx={{ mt: 1.5 }}
+                                      >
+                                        <Typography
+                                          fontSize="0.82rem"
+                                          fontWeight={700}
                                         >
-                                          Edit
-                                        </Button>
-                                        <Button
-                                          size="small"
-                                          color="error"
-                                          onClick={() =>
-                                            handleDeleteCollectionItem(
-                                              "upcomingTrips",
-                                              index,
-                                              "Trip removed from your dashboard.",
-                                            )
-                                          }
-                                          sx={{
-                                            ...compactPillButtonSx,
-                                            minWidth: 0,
-                                            px: 1,
-                                          }}
-                                        >
-                                          Delete
-                                        </Button>
+                                          Budget:{" "}
+                                          {formatPrice(trip.budget || 990)}
+                                        </Typography>
+                                        <Stack direction="row" spacing={0.5}>
+                                          <Button
+                                            size="small"
+                                            onClick={() =>
+                                              handleEditCollectionItem(
+                                                "upcomingTrips",
+                                                index,
+                                              )
+                                            }
+                                            sx={{
+                                              ...compactPillButtonSx,
+                                              minWidth: 0,
+                                              px: 1,
+                                            }}
+                                          >
+                                            Edit
+                                          </Button>
+                                          <Button
+                                            size="small"
+                                            color="error"
+                                            onClick={() =>
+                                              handleDeleteCollectionItem(
+                                                "upcomingTrips",
+                                                index,
+                                                "Trip removed from your dashboard.",
+                                              )
+                                            }
+                                            sx={{
+                                              ...compactPillButtonSx,
+                                              minWidth: 0,
+                                              px: 1,
+                                            }}
+                                          >
+                                            Delete
+                                          </Button>
+                                        </Stack>
                                       </Stack>
-                                    </Stack>
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
+                                    </CardContent>
+                                  </Card>
+                                </Grid>
+                              ))}
+                            </Grid>
+                          ) : (
+                            <Paper
+                              elevation={0}
+                              sx={{
+                                p: 2,
+                                borderRadius: 3,
+                                bgcolor: "#f8fbff",
+                                border: "1px dashed #bfdbfe",
+                              }}
+                            >
+                              <Typography
+                                fontWeight={700}
+                                sx={{ color: "#1c1917" }}
+                              >
+                                No booking is done yet
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: 0.5 }}
+                              >
+                                Only your booked trips will appear here once you
+                                confirm a tour.
+                              </Typography>
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to="/tours"
+                                variant="contained"
+                                sx={{
+                                  ...compactPillButtonSx,
+                                  mt: 1.5,
+                                  bgcolor: "#2563eb",
+                                  color: "#fff",
+                                  "&:hover": {
+                                    bgcolor: "#1d4ed8",
+                                    color: "#fff",
+                                  },
+                                }}
+                              >
+                                Explore Trips
+                              </Button>
+                            </Paper>
+                          )}
                         </Paper>
                       </Grid>
 

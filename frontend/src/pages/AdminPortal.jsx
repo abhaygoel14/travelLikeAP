@@ -80,6 +80,29 @@ const createEmptyCouponForm = () => ({
   targetUserLabel: "",
 });
 
+const createEmptyHomeGalleryForm = () => ({
+  image: "",
+  location: "",
+  caption: "",
+  likes: "",
+  comments: "",
+});
+
+const normalizeHomeGalleryItems = (items = []) => {
+  const source = Array.isArray(items) ? items : Object.values(items || {});
+
+  return source
+    .map((item, index) => ({
+      id: String(item?.id || `gallery-${index}`),
+      image: String(item?.image || item?.src || item?.photo || "").trim(),
+      location: String(item?.location || item?.place || "").trim(),
+      caption: String(item?.caption || item?.comment || "").trim(),
+      likes: String(item?.likes || "").trim(),
+      comments: String(item?.comments || item?.commentCount || "").trim(),
+    }))
+    .filter((item) => item.image);
+};
+
 const AdminPortal = () => {
   const { user, userRole, dispatch } = useContext(AuthContext);
   const { tours, loading, source } = useTours();
@@ -93,6 +116,14 @@ const AdminPortal = () => {
   const [previewMode, setPreviewMode] = useState("card");
   const [portalUsers, setPortalUsers] = useState([]);
   const [portalUsersLoading, setPortalUsersLoading] = useState(false);
+  const [homeGalleryItems, setHomeGalleryItems] = useState([]);
+  const [homeGalleryLoading, setHomeGalleryLoading] = useState(false);
+  const [savingHomeGallery, setSavingHomeGallery] = useState(false);
+  const [uploadingHomeGalleryImage, setUploadingHomeGalleryImage] =
+    useState(false);
+  const [homeGalleryForm, setHomeGalleryForm] = useState(() =>
+    createEmptyHomeGalleryForm(),
+  );
   const [adminEmail, setAdminEmail] = useState("");
   const [promotingEmail, setPromotingEmail] = useState("");
   const [adminView, setAdminView] = useState("tours");
@@ -212,6 +243,53 @@ const AdminPortal = () => {
     };
 
     loadPortalUsers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadHomeGallery = async () => {
+      if (active) {
+        setHomeGalleryLoading(true);
+      }
+
+      if (!realtimeDb) {
+        if (active) {
+          setHomeGalleryItems([]);
+          setHomeGalleryLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const snapshot = await getDbValue(
+          dbRef(realtimeDb, "siteContent/homeGallery"),
+        );
+
+        if (!active) {
+          return;
+        }
+
+        setHomeGalleryItems(
+          snapshot.exists() ? normalizeHomeGalleryItems(snapshot.val()) : [],
+        );
+      } catch (error) {
+        console.warn("Unable to load homepage gallery:", error);
+        if (active) {
+          setHomeGalleryItems([]);
+        }
+      } finally {
+        if (active) {
+          setHomeGalleryLoading(false);
+        }
+      }
+    };
+
+    loadHomeGallery();
 
     return () => {
       active = false;
@@ -410,6 +488,138 @@ const AdminPortal = () => {
     } finally {
       setUploadingGallery(false);
       event.target.value = "";
+    }
+  };
+
+  const handleHomeGalleryFieldChange = ({ target }) => {
+    const { name, value } = target;
+
+    setHomeGalleryForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const syncHomeGalleryItems = async (nextItems, successText) => {
+    if (!realtimeDb) {
+      throw new Error("Firebase is not configured for homepage gallery.");
+    }
+
+    const normalizedItems = normalizeHomeGalleryItems(nextItems);
+
+    await updateDb(dbRef(realtimeDb, "siteContent"), {
+      homeGallery: normalizedItems,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setHomeGalleryItems(normalizedItems);
+    setStatus({
+      color: "success",
+      text: successText,
+    });
+  };
+
+  const handleHomeGalleryImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      setUploadingHomeGalleryImage(true);
+      const imageUrl = await uploadImageToFirebase(file, "home-gallery");
+
+      setHomeGalleryForm((prev) => ({
+        ...prev,
+        image: imageUrl,
+      }));
+      setStatus({
+        color: "success",
+        text: "Gallery image uploaded. Add the place, caption, likes, and comments to publish it.",
+      });
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to upload that gallery image.",
+      });
+    } finally {
+      setUploadingHomeGalleryImage(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleSaveHomeGalleryItem = async (event) => {
+    event.preventDefault();
+
+    if (!canOpenPortal) {
+      setStatus({
+        color: "warning",
+        text: "Only admins can manage the homepage gallery.",
+      });
+      return;
+    }
+
+    const nextItem = {
+      id: `gallery-${Date.now()}`,
+      image: String(homeGalleryForm.image || "").trim(),
+      location: String(homeGalleryForm.location || "").trim(),
+      caption: String(homeGalleryForm.caption || "").trim(),
+      likes: String(homeGalleryForm.likes || "0").trim(),
+      comments: String(homeGalleryForm.comments || "0").trim(),
+    };
+
+    if (!nextItem.image || !nextItem.location || !nextItem.caption) {
+      setStatus({
+        color: "warning",
+        text: "Add an image, place name, and caption before saving the gallery card.",
+      });
+      return;
+    }
+
+    try {
+      setSavingHomeGallery(true);
+      await syncHomeGalleryItems(
+        [nextItem, ...homeGalleryItems],
+        "Homepage gallery updated successfully.",
+      );
+      setHomeGalleryForm(createEmptyHomeGalleryForm());
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to save that gallery card right now.",
+      });
+    } finally {
+      setSavingHomeGallery(false);
+    }
+  };
+
+  const handleDeleteHomeGalleryItem = async (itemId) => {
+    if (!itemId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Remove this homepage gallery card from Firebase?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSavingHomeGallery(true);
+      await syncHomeGalleryItems(
+        homeGalleryItems.filter((item) => item.id !== itemId),
+        "Gallery card removed from the homepage.",
+      );
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to remove that gallery card right now.",
+      });
+    } finally {
+      setSavingHomeGallery(false);
     }
   };
 
@@ -693,6 +903,13 @@ const AdminPortal = () => {
                   onClick={() => setAdminView("policies")}
                 >
                   Policy pages
+                </button>
+                <button
+                  type="button"
+                  className={`admin-section-nav__btn ${adminView === "gallery" ? "active" : ""}`}
+                  onClick={() => setAdminView("gallery")}
+                >
+                  Homepage gallery
                 </button>
                 <button
                   type="button"
@@ -1538,6 +1755,198 @@ const AdminPortal = () => {
                 </Row>
               )}
             </>
+          ) : adminView === "gallery" ? (
+            <Row className="g-4">
+              <Col lg="4">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Homepage gallery</h4>
+                      <p>
+                        Upload homepage gallery cards with place, caption,
+                        likes, and comments.
+                      </p>
+                    </div>
+                    <Badge color="info" pill>
+                      {homeGalleryItems.length} post
+                      {homeGalleryItems.length === 1 ? "" : "s"}
+                    </Badge>
+                  </div>
+
+                  <Form onSubmit={handleSaveHomeGalleryItem}>
+                    <FormGroup>
+                      <Label for="homeGalleryImage">Image URL</Label>
+                      <Input
+                        id="homeGalleryImage"
+                        name="image"
+                        value={homeGalleryForm.image}
+                        onChange={handleHomeGalleryFieldChange}
+                        placeholder="https://..."
+                        required
+                      />
+                      <small className="text-muted d-block mt-2">
+                        Or upload an image directly to Firebase Storage.
+                      </small>
+                      <Input
+                        id="homeGalleryImageUpload"
+                        name="homeGalleryImageUpload"
+                        type="file"
+                        accept="image/*"
+                        className="mt-2"
+                        onChange={handleHomeGalleryImageUpload}
+                        disabled={uploadingHomeGalleryImage || !user}
+                      />
+                      <small className="text-muted d-block mt-2">
+                        {uploadingHomeGalleryImage
+                          ? "Uploading gallery image..."
+                          : "PNG, JPG, or WEBP up to 5MB."}
+                      </small>
+                    </FormGroup>
+
+                    <FormGroup>
+                      <Label for="homeGalleryLocation">Place name</Label>
+                      <Input
+                        id="homeGalleryLocation"
+                        name="location"
+                        value={homeGalleryForm.location}
+                        onChange={handleHomeGalleryFieldChange}
+                        placeholder="Goa"
+                        required
+                      />
+                    </FormGroup>
+
+                    <FormGroup>
+                      <Label for="homeGalleryCaption">Caption / comment</Label>
+                      <Input
+                        id="homeGalleryCaption"
+                        name="caption"
+                        value={homeGalleryForm.caption}
+                        onChange={handleHomeGalleryFieldChange}
+                        placeholder="Coffee and coast"
+                        required
+                      />
+                    </FormGroup>
+
+                    <Row className="g-3">
+                      <Col sm="6">
+                        <FormGroup>
+                          <Label for="homeGalleryLikes">Likes</Label>
+                          <Input
+                            id="homeGalleryLikes"
+                            name="likes"
+                            value={homeGalleryForm.likes}
+                            onChange={handleHomeGalleryFieldChange}
+                            placeholder="1.8k"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col sm="6">
+                        <FormGroup>
+                          <Label for="homeGalleryComments">Comments</Label>
+                          <Input
+                            id="homeGalleryComments"
+                            name="comments"
+                            value={homeGalleryForm.comments}
+                            onChange={handleHomeGalleryFieldChange}
+                            placeholder="44"
+                          />
+                        </FormGroup>
+                      </Col>
+                    </Row>
+
+                    <div className="admin-form-actions">
+                      <Button
+                        color="primary"
+                        type="submit"
+                        disabled={
+                          savingHomeGallery || uploadingHomeGalleryImage
+                        }
+                      >
+                        {savingHomeGallery ? "Saving..." : "Add gallery card"}
+                      </Button>
+                      <Button
+                        color="secondary"
+                        outline
+                        type="button"
+                        onClick={() =>
+                          setHomeGalleryForm(createEmptyHomeGalleryForm())
+                        }
+                      >
+                        Reset
+                      </Button>
+                    </div>
+                  </Form>
+                </div>
+              </Col>
+
+              <Col lg="8">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Homepage gallery preview</h4>
+                      <p>
+                        These cards appear in the homepage gallery and sync from
+                        Firebase.
+                      </p>
+                    </div>
+                  </div>
+
+                  {homeGalleryLoading ? (
+                    <div className="admin-loader">
+                      <Spinner size="sm" /> Loading gallery...
+                    </div>
+                  ) : homeGalleryItems.length ? (
+                    <div className="admin-gallery-list">
+                      {homeGalleryItems.map((item) => (
+                        <div key={item.id} className="admin-gallery-item">
+                          <img
+                            src={item.image}
+                            alt={
+                              item.caption || item.location || "Gallery card"
+                            }
+                            className="admin-gallery-thumb"
+                          />
+                          <div className="admin-gallery-meta">
+                            <strong>{item.location || "Destination"}</strong>
+                            <span>{item.caption || "No caption added"}</span>
+                            <div className="admin-gallery-stats">
+                              <Badge color="primary" pill>
+                                ❤ {item.likes || "0"}
+                              </Badge>
+                              <Badge color="secondary" pill>
+                                💬 {item.comments || "0"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="admin-user-actions">
+                            <Button
+                              type="button"
+                              color="danger"
+                              outline
+                              size="sm"
+                              disabled={savingHomeGallery}
+                              onClick={() =>
+                                handleDeleteHomeGalleryItem(item.id)
+                              }
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="admin-preview-note">
+                      <h5>No gallery posts yet</h5>
+                      <p>
+                        Add your first image here to show it in the homepage
+                        gallery.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            </Row>
           ) : adminView === "users" ? (
             <Row className="g-4">
               <Col lg="4">
