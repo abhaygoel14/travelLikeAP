@@ -1,0 +1,87 @@
+.contact-page-section {
+  padding: 3rem 0;
+  background: #f8fbff;
+}
+
+.contact-page-card {
+  border-radius: 20px;
+  border: 1px solid #dbeafe;
+  background: #fff;
+  padding: 1.5rem;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.08);
+}
+
+.contact-page-card h2 {
+  margin-bottom: 0.45rem;
+  color: #0f172a;
+}
+
+.contact-page-card p {
+  margin-bottom: 1rem;
+  color: #64748b;
+}
+
+.contact-page-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.contact-page-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 14px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  padding: 0.8rem 0.9rem;
+  text-decoration: none;
+}
+
+.contact-page-item small {
+  display: block;
+  color: #64748b;
+}
+
+.contact-page-item strong {
+  color: #0f172a;
+}
+
+.contact-page-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.contact-inquiry-wrap {
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.contact-inquiry-wrap h3 {
+  margin-bottom: 0.2rem;
+  color: #0f172a;
+}
+
+.contact-inquiry-wrap p {
+  margin-bottom: 0.9rem;
+  color: #64748b;
+}
+
+@media (max-width: 767.98px) {
+  .contact-page-section {
+    padding: 2rem 0;
+  }
+
+  .contact-page-card {
+    padding: 1.1rem;
+  }
+}

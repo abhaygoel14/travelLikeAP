@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Alert, Col, Container, Row, Spinner } from "reactstrap";
 import CommonSection from "../shared/CommonSection";
 import Newsletter from "../shared/Newsletter";
@@ -12,6 +12,7 @@ export default function PolicyContentPage({ policyKey = "terms" }) {
   const [policy, setPolicy] = useState(() => normalizePolicyContent(policyKey));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const contentRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -46,6 +47,47 @@ export default function PolicyContentPage({ policyKey = "terms" }) {
     };
   }, [policyKey]);
 
+  useEffect(() => {
+    const container = contentRef.current;
+
+    if (!container) {
+      return undefined;
+    }
+
+    const handleContentClick = (event) => {
+      const target = event.target;
+
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const linkElement = target.closest("a[href]");
+
+      if (!linkElement) {
+        return;
+      }
+
+      const hrefValue = String(linkElement.getAttribute("href") || "").trim();
+
+      if (
+        !hrefValue ||
+        (!/^mailto:/i.test(hrefValue) && !/^tel:/i.test(hrefValue))
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      window.location.href = hrefValue;
+    };
+
+    container.addEventListener("click", handleContentClick);
+
+    return () => {
+      container.removeEventListener("click", handleContentClick);
+    };
+  }, [policy.html]);
+
   return (
     <>
       <CommonSection title={policy.title} />
@@ -61,6 +103,7 @@ export default function PolicyContentPage({ policyKey = "terms" }) {
                   </div>
                 ) : (
                   <div
+                    ref={contentRef}
                     className="policy-page-content"
                     dangerouslySetInnerHTML={{ __html: policy.html }}
                   />

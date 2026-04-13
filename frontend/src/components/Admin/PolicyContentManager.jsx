@@ -17,6 +17,34 @@ const FONT_OPTIONS = [
 function RichTextEditor({ value, onChange }) {
   const editorRef = useRef(null);
 
+  const normalizeLinkInput = (inputValue = "") => {
+    const rawValue = String(inputValue || "").trim();
+
+    if (!rawValue) {
+      return "";
+    }
+
+    const cleanedValue = rawValue
+      .replace(/^https?:\/\/(mailto:|tel:)/i, "$1")
+      .replace(/^\/\/(mailto:|tel:)/i, "$1")
+      .replace(/^mailto:\/\//i, "mailto:")
+      .replace(/^tel:\/\//i, "tel:");
+
+    if (/^mailto:/i.test(cleanedValue) || /^tel:/i.test(cleanedValue)) {
+      return cleanedValue;
+    }
+
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedValue)) {
+      return `mailto:${cleanedValue}`;
+    }
+
+    if (/^\+?[0-9\s-]{7,15}$/.test(cleanedValue)) {
+      return `tel:${cleanedValue.replace(/\s+/g, "")}`;
+    }
+
+    return cleanedValue;
+  };
+
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value || "";
@@ -42,9 +70,10 @@ function RichTextEditor({ value, onChange }) {
 
   const handleAddLink = () => {
     const nextUrl = window.prompt("Enter the link URL");
+    const normalizedUrl = normalizeLinkInput(nextUrl);
 
-    if (nextUrl) {
-      runCommand("createLink", nextUrl);
+    if (normalizedUrl) {
+      runCommand("createLink", normalizedUrl);
     }
   };
 

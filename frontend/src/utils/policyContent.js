@@ -53,6 +53,66 @@ const POLICY_DEFAULTS = Object.fromEntries(
   POLICY_PAGE_CONFIG.map((item) => [item.key, item]),
 );
 
+const normalizeSingleHref = (hrefValue = "") => {
+  const rawHref = String(hrefValue || "").trim();
+
+  if (!rawHref) {
+    return "";
+  }
+
+  const cleanedHref = rawHref
+    .replace(/^https?:\/\/(mailto:|tel:)/i, "$1")
+    .replace(/^\/\/(mailto:|tel:)/i, "$1")
+    .replace(/^mailto:\/\//i, "mailto:")
+    .replace(/^tel:\/\//i, "tel:");
+
+  const valueWithoutProtocol = cleanedHref.replace(/^https?:\/\//i, "");
+  const compactValue = valueWithoutProtocol.replace(/\s+/g, "");
+
+  if (/^mailto:/i.test(cleanedHref) || /^tel:/i.test(cleanedHref)) {
+    return cleanedHref;
+  }
+
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(compactValue)) {
+    return `mailto:${compactValue}`;
+  }
+
+  if (/^\+?[0-9()-]{7,18}$/.test(compactValue)) {
+    return `tel:${compactValue}`;
+  }
+
+  return cleanedHref;
+};
+
+export const normalizePolicyHtmlLinks = (html = "") => {
+  const htmlText = String(html || "");
+
+  if (!htmlText.trim()) {
+    return "";
+  }
+
+  if (typeof document === "undefined") {
+    return htmlText.replace(
+      /href\s*=\s*(["'])https?:\/\/(mailto:|tel:)([^"']*)\1/gi,
+      'href="$2$3"',
+    );
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, "text/html");
+
+  doc.querySelectorAll("a[href]").forEach((anchor) => {
+    const currentHref = anchor.getAttribute("href") || "";
+    const nextHref = normalizeSingleHref(currentHref);
+
+    if (nextHref) {
+      anchor.setAttribute("href", nextHref);
+    }
+  });
+
+  return doc.body.innerHTML;
+};
+
 export const normalizePolicyContent = (policyKey, value = {}) => {
   const config = POLICY_DEFAULTS[policyKey] || POLICY_PAGE_CONFIG[0];
 
@@ -60,7 +120,7 @@ export const normalizePolicyContent = (policyKey, value = {}) => {
     key: config.key,
     title: String(value?.title || config.title).trim() || config.title,
     route: config.route,
-    html: String(value?.html || config.defaultHtml || "").trim(),
+    html: normalizePolicyHtmlLinks(value?.html || config.defaultHtml || ""),
     updatedAt: String(value?.updatedAt || "").trim(),
     updatedBy: String(value?.updatedBy || "").trim(),
   };

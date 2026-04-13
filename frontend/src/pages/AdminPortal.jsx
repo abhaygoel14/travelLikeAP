@@ -103,6 +103,29 @@ const normalizeHomeGalleryItems = (items = []) => {
     .filter((item) => item.image);
 };
 
+const normalizeInquiryItems = (items = {}) =>
+  Object.entries(items || {})
+    .map(([id, entry]) => ({
+      id: String(entry?.id || id),
+      name: String(entry?.name || "").trim(),
+      email: String(entry?.email || "").trim(),
+      phone: String(entry?.phone || "").trim(),
+      message: String(entry?.message || "").trim(),
+      status:
+        String(entry?.status || "new")
+          .trim()
+          .toLowerCase() === "resolved"
+          ? "resolved"
+          : "new",
+      createdAt: String(entry?.createdAt || "").trim(),
+    }))
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.createdAt || "") || 0;
+      const rightTime = Date.parse(right.createdAt || "") || 0;
+
+      return rightTime - leftTime;
+    });
+
 const AdminPortal = () => {
   const { user, userRole, dispatch } = useContext(AuthContext);
   const { tours, loading, source } = useTours();
@@ -124,6 +147,9 @@ const AdminPortal = () => {
   const [homeGalleryForm, setHomeGalleryForm] = useState(() =>
     createEmptyHomeGalleryForm(),
   );
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiriesLoading, setInquiriesLoading] = useState(false);
+  const [updatingInquiryId, setUpdatingInquiryId] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [promotingEmail, setPromotingEmail] = useState("");
   const [adminView, setAdminView] = useState("tours");
@@ -243,6 +269,51 @@ const AdminPortal = () => {
     };
 
     loadPortalUsers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadInquiries = async () => {
+      if (active) {
+        setInquiriesLoading(true);
+      }
+
+      if (!realtimeDb) {
+        if (active) {
+          setInquiries([]);
+          setInquiriesLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const snapshot = await getDbValue(dbRef(realtimeDb, "inquiries"));
+
+        if (!active) {
+          return;
+        }
+
+        setInquiries(
+          snapshot.exists() ? normalizeInquiryItems(snapshot.val()) : [],
+        );
+      } catch (error) {
+        console.warn("Unable to load inquiries:", error);
+        if (active) {
+          setInquiries([]);
+        }
+      } finally {
+        if (active) {
+          setInquiriesLoading(false);
+        }
+      }
+    };
+
+    loadInquiries();
 
     return () => {
       active = false;
@@ -623,6 +694,47 @@ const AdminPortal = () => {
     }
   };
 
+  const handleUpdateInquiryStatus = async (inquiryId, nextStatus) => {
+    if (!inquiryId || !realtimeDb) {
+      return;
+    }
+
+    const normalizedStatus =
+      String(nextStatus || "new")
+        .trim()
+        .toLowerCase() === "resolved"
+        ? "resolved"
+        : "new";
+
+    try {
+      setUpdatingInquiryId(inquiryId);
+      await updateDb(dbRef(realtimeDb, `inquiries/${inquiryId}`), {
+        status: normalizedStatus,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setInquiries((prev) =>
+        prev.map((item) =>
+          item.id === inquiryId ? { ...item, status: normalizedStatus } : item,
+        ),
+      );
+      setStatus({
+        color: "success",
+        text:
+          normalizedStatus === "resolved"
+            ? "Inquiry marked as resolved."
+            : "Inquiry marked as new.",
+      });
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to update inquiry status right now.",
+      });
+    } finally {
+      setUpdatingInquiryId("");
+    }
+  };
+
   const handleSelectTour = (tour) => {
     const nextForm = tourToFormState(tour);
 
@@ -917,6 +1029,13 @@ const AdminPortal = () => {
                   onClick={() => setAdminView("users")}
                 >
                   Users & roles
+                </button>
+                <button
+                  type="button"
+                  className={`admin-section-nav__btn ${adminView === "inquiries" ? "active" : ""}`}
+                  onClick={() => setAdminView("inquiries")}
+                >
+                  Inquiries
                 </button>
               </div>
             </Col>
@@ -2122,6 +2241,97 @@ const AdminPortal = () => {
                     <div className="admin-preview-note">
                       <h5>No users found</h5>
                       <p>User accounts will appear here once people sign in.</p>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            </Row>
+          ) : adminView === "inquiries" ? (
+            <Row className="g-4">
+              <Col lg="12">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Contact inquiries</h4>
+                      <p>
+                        {inquiriesLoading
+                          ? "Loading inquiries..."
+                          : `${inquiries.length} inquiry${inquiries.length === 1 ? "" : "ies"} received`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {inquiriesLoading ? (
+                    <div className="admin-loader">
+                      <Spinner size="sm" /> Loading inquiries...
+                    </div>
+                  ) : inquiries.length ? (
+                    <div className="admin-inquiry-list">
+                      {inquiries.map((item) => {
+                        const isResolved = item.status === "resolved";
+                        const isUpdating = updatingInquiryId === item.id;
+
+                        return (
+                          <div key={item.id} className="admin-inquiry-item">
+                            <div className="admin-inquiry-head">
+                              <div>
+                                <strong>{item.name || "Traveler"}</strong>
+                                <span>{item.email || "No email"}</span>
+                              </div>
+                              <Badge
+                                color={isResolved ? "success" : "warning"}
+                                pill
+                              >
+                                {isResolved ? "Resolved" : "New"}
+                              </Badge>
+                            </div>
+
+                            <p className="admin-inquiry-message">
+                              {item.message || "No message shared."}
+                            </p>
+
+                            <div className="admin-inquiry-footer">
+                              <small>
+                                Phone: {item.phone || "Not provided"}
+                              </small>
+                              <small>
+                                {item.createdAt
+                                  ? `Received: ${new Date(item.createdAt).toLocaleString()}`
+                                  : "Received date unavailable"}
+                              </small>
+                            </div>
+
+                            <div className="admin-user-actions">
+                              <Button
+                                type="button"
+                                color={isResolved ? "secondary" : "success"}
+                                outline={isResolved}
+                                size="sm"
+                                disabled={isUpdating}
+                                onClick={() =>
+                                  handleUpdateInquiryStatus(
+                                    item.id,
+                                    isResolved ? "new" : "resolved",
+                                  )
+                                }
+                              >
+                                {isUpdating
+                                  ? "Updating..."
+                                  : isResolved
+                                    ? "Mark as new"
+                                    : "Mark as resolved"}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="admin-preview-note">
+                      <h5>No inquiries yet</h5>
+                      <p>
+                        Contact form submissions will appear here automatically.
+                      </p>
                     </div>
                   )}
                 </div>

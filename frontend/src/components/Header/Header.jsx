@@ -11,6 +11,7 @@ const baseNavLinks = [
   { path: "/", display: "Home" },
   { path: "/about", display: "About" },
   { path: "/tours", display: "Tours" },
+  { path: "/contact-us", display: "Contact Us" }
 ];
 
 const Header = () => {
