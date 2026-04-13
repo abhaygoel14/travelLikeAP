@@ -743,19 +743,21 @@ const UserDashboard = () => {
     }
   }, [isEditingProfile, user]);
 
+  const currentUserUid = String(user?.uid || "").trim();
+
   useEffect(() => {
     let active = true;
 
     const loadProfile = async () => {
-      if (!user?.uid || !realtimeDb) {
+      if (!currentUserUid || !realtimeDb) {
         return;
       }
 
       try {
-        const snapshot = await get(ref(realtimeDb, `users/${user.uid}`));
+        const snapshot = await get(ref(realtimeDb, `users/${currentUserUid}`));
         if (active && snapshot.exists()) {
           const mergedProfile = normalizeProfile({
-            ...user,
+            uid: currentUserUid,
             ...snapshot.val(),
           });
           setProfile(mergedProfile);
@@ -770,7 +772,7 @@ const UserDashboard = () => {
     return () => {
       active = false;
     };
-  }, [dispatch, user?.uid]);
+  }, [currentUserUid, dispatch]);
 
   const firstName = useMemo(
     () => profile.firstName || profile.displayName || "Traveler",
