@@ -109,6 +109,17 @@ const normalizeUpcomingTrips = (trips = []) => {
 
 const MAX_AVATAR_FILE_SIZE = 1024 * 1024;
 const MAX_FIREBASE_PHOTO_URL_LENGTH = 2048;
+const MAX_PROFILE_INTEREST_TAGS = 5;
+const TRAVEL_INTEREST_SUGGESTIONS = [
+  "Adventure",
+  "Beaches",
+  "Mountains",
+  "Food",
+  "Road Trips",
+  "Camping",
+  "Photography",
+  "Backpacking",
+];
 
 const compactPillButtonSx = {
   borderRadius: 1.5,
@@ -613,13 +624,7 @@ const normalizeProfile = (user = {}) => {
     uploadedProfilePhoto: resolvedPhotoURL,
     profileUrl: resolvedPhotoURL,
     imageUrl: resolvedPhotoURL,
-    hobby: user.hobby || "",
-    interests: Array.isArray(user.interests)
-      ? user.interests
-      : String(user.interests || "")
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean),
+    interests: normalizeInterestTags(user.interests),
     gallery: normalizeMemoryGallery(user.gallery),
     upcomingTrips: normalizeUpcomingTrips(user.upcomingTrips),
     paymentOptions:
@@ -634,6 +639,24 @@ const normalizeProfile = (user = {}) => {
   };
 };
 
+const normalizeInterestTags = (value = []) =>
+  Array.from(
+    new Set(
+      (Array.isArray(value) ? value : String(value || "").split(","))
+        .map((item) => String(item || "").trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, MAX_PROFILE_INTEREST_TAGS);
+
+const createProfileFormState = (profileData = {}) => ({
+  firstName: profileData.firstName || "",
+  lastName: profileData.lastName || "",
+  email: profileData.pendingEmail || profileData.email || "",
+  phoneNumber: profileData.phoneNumber || "",
+  interests: normalizeInterestTags(profileData.interests).join(", "),
+  photoURL: profileData.photoURL || "",
+});
+
 const UserDashboard = () => {
   const { user, dispatch } = useContext(AuthContext);
   const { tours } = useTours();
@@ -645,15 +668,9 @@ const UserDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [status, setStatus] = useState({ severity: "info", message: "" });
   const [profile, setProfile] = useState(normalizeProfile(user || {}));
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-    hobby: "",
-    interests: "",
-    photoURL: "",
-  });
+  const [form, setForm] = useState(() =>
+    createProfileFormState(normalizeProfile(user || {})),
+  );
   const [memoryUploadOpen, setMemoryUploadOpen] = useState(false);
   const [memoryDrafts, setMemoryDrafts] = useState([]);
   const [savingMemories, setSavingMemories] = useState(false);
@@ -666,6 +683,9 @@ const UserDashboard = () => {
   });
   const [viewingMemory, setViewingMemory] = useState(null);
   const [tabLoading, setTabLoading] = useState(true);
+  const [currentGreetingDate, setCurrentGreetingDate] = useState(
+    () => new Date(),
+  );
   const showNotifications = Boolean(notificationAnchorEl);
   const memoryGalleryEnabled = FEATURE_FLAGS.memoryGallery;
   const travelSnapshotEnabled = FEATURE_FLAGS.travelSnapshotCard;
@@ -701,6 +721,14 @@ const UserDashboard = () => {
   }, [tab]);
 
   useEffect(() => {
+    const greetingTimer = window.setInterval(() => {
+      setCurrentGreetingDate(new Date());
+    }, 60000);
+
+    return () => window.clearInterval(greetingTimer);
+  }, []);
+
+  useEffect(() => {
     if (!memoryGalleryEnabled && tab === 1) {
       setTab(0);
     }
@@ -709,16 +737,11 @@ const UserDashboard = () => {
   useEffect(() => {
     const nextProfile = normalizeProfile(user || {});
     setProfile(nextProfile);
-    setForm({
-      firstName: nextProfile.firstName || "",
-      lastName: nextProfile.lastName || "",
-      email: nextProfile.pendingEmail || nextProfile.email || "",
-      phoneNumber: nextProfile.phoneNumber || "",
-      hobby: nextProfile.hobby || "",
-      interests: (nextProfile.interests || []).join(", "),
-      photoURL: nextProfile.photoURL || "",
-    });
-  }, [user]);
+
+    if (!isEditingProfile) {
+      setForm(createProfileFormState(nextProfile));
+    }
+  }, [isEditingProfile, user]);
 
   useEffect(() => {
     let active = true;
@@ -747,18 +770,43 @@ const UserDashboard = () => {
     return () => {
       active = false;
     };
-  }, [dispatch, user]);
+  }, [dispatch, user?.uid]);
 
   const firstName = useMemo(
     () => profile.firstName || profile.displayName || "Traveler",
     [profile],
   );
+  const greetingLabel = useMemo(() => {
+    const currentHour = currentGreetingDate.getHours();
+
+    if (currentHour < 12) {
+      return "Good Morning";
+    }
+
+    if (currentHour < 17) {
+      return "Good Afternoon";
+    }
+
+    return "Good Evening";
+  }, [currentGreetingDate]);
 
   const sideTrips = useMemo(
     () => (profile.upcomingTrips || []).slice(0, 4),
     [profile.upcomingTrips],
   );
   const hasUpcomingBookings = sideTrips.length > 0;
+  const phoneNumberError =
+    form.phoneNumber && form.phoneNumber.length !== 10
+      ? "Phone number must be exactly 10 digits."
+      : "";
+  const selectedInterestTags = useMemo(
+    () => normalizeInterestTags(form.interests),
+    [form.interests],
+  );
+  const profileTravelTags = useMemo(
+    () => normalizeInterestTags(profile.interests),
+    [profile.interests],
+  );
 
   const memories = useMemo(() => profile.gallery || [], [profile.gallery]);
 
@@ -995,20 +1043,50 @@ const UserDashboard = () => {
 
   const handleFieldChange = (field) => (event) => {
     setIsEditingProfile(true);
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+
+    const nextValue =
+      field === "phoneNumber"
+        ? String(event.target.value || "")
+            .replace(/\D/g, "")
+            .slice(0, 10)
+        : field === "interests"
+          ? normalizeInterestTags(event.target.value).join(", ")
+          : event.target.value;
+
+    setForm((prev) => ({ ...prev, [field]: nextValue }));
+  };
+
+  const handleSuggestedTagToggle = (tag) => {
+    setIsEditingProfile(true);
+
+    const currentTags = normalizeInterestTags(form.interests);
+    const alreadySelected = currentTags.some(
+      (item) => item.toLowerCase() === String(tag).toLowerCase(),
+    );
+
+    if (!alreadySelected && currentTags.length >= MAX_PROFILE_INTEREST_TAGS) {
+      setStatus({
+        severity: "info",
+        message: `You can choose up to ${MAX_PROFILE_INTEREST_TAGS} travel tags.`,
+      });
+      return;
+    }
+
+    const nextTags = alreadySelected
+      ? currentTags.filter(
+          (item) => item.toLowerCase() !== String(tag).toLowerCase(),
+        )
+      : [...currentTags, tag];
+
+    setForm((prev) => ({
+      ...prev,
+      interests: nextTags.join(", "),
+    }));
   };
 
   const handleResetForm = () => {
     const nextProfile = normalizeProfile(profile);
-    setForm({
-      firstName: nextProfile.firstName || "",
-      lastName: nextProfile.lastName || "",
-      email: nextProfile.pendingEmail || nextProfile.email || "",
-      phoneNumber: nextProfile.phoneNumber || "",
-      hobby: nextProfile.hobby || "",
-      interests: (nextProfile.interests || []).join(", "),
-      photoURL: nextProfile.photoURL || "",
-    });
+    setForm(createProfileFormState(nextProfile));
     setIsEditingProfile(false);
     setStatus({ severity: "info", message: "Unsaved changes cleared." });
   };
@@ -1828,6 +1906,18 @@ const UserDashboard = () => {
       return;
     }
 
+    const cleanedPhoneNumber = String(form.phoneNumber || "")
+      .replace(/\D/g, "")
+      .trim();
+
+    if (cleanedPhoneNumber && cleanedPhoneNumber.length !== 10) {
+      setStatus({
+        severity: "error",
+        message: "Phone number must be exactly 10 digits.",
+      });
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -1857,12 +1947,8 @@ const UserDashboard = () => {
         username: [form.firstName.trim(), form.lastName.trim()]
           .filter(Boolean)
           .join(" "),
-        phoneNumber: form.phoneNumber.trim(),
-        hobby: form.hobby.trim(),
-        interests: form.interests
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean),
+        phoneNumber: cleanedPhoneNumber,
+        interests: normalizeInterestTags(form.interests),
         photoURL: resolvedPhotoURL,
         uploadedProfilePhoto: resolvedPhotoURL,
         profileUrl: resolvedPhotoURL,
@@ -1933,18 +2019,20 @@ const UserDashboard = () => {
       <Stack
         direction={{ xs: "column", md: "row" }}
         justifyContent="space-between"
+        alignItems={{ xs: "flex-start", md: "center" }}
         spacing={2}
       >
-        <Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             variant="h4"
             fontWeight={800}
             sx={{
               color: "#1c1917",
               fontSize: { xs: "1.8rem", md: "2.25rem" },
+              lineHeight: 1.15,
             }}
           >
-            Good Morning, {firstName} 👋
+            {greetingLabel}, {firstName} 👋
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             Plan your itinerary with us.
@@ -1957,6 +2045,8 @@ const UserDashboard = () => {
           useFlexGap
           flexWrap="wrap"
           alignItems="center"
+          justifyContent={{ xs: "flex-start", md: "flex-end" }}
+          sx={{ flexShrink: 0 }}
         >
           <IconButton
             aria-label="Search tours"
@@ -1983,7 +2073,12 @@ const UserDashboard = () => {
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={handleSaveProfile}
-            disabled={saving || uploadingAvatar || !isEditingProfile}
+            disabled={
+              saving ||
+              uploadingAvatar ||
+              !isEditingProfile ||
+              Boolean(phoneNumberError)
+            }
             sx={{
               ...compactPillButtonSx,
               px: 1.3,
@@ -2158,6 +2253,38 @@ const UserDashboard = () => {
                 >
                   {isEditingProfile ? "Close editor" : "+ Edit profile"}
                 </Button>
+
+                {profileTravelTags.length ? (
+                  <Box>
+                    <Typography
+                      variant="overline"
+                      sx={{ color: "#64748b", letterSpacing: ".08em" }}
+                    >
+                      Travel tags
+                    </Typography>
+                    <Stack
+                      direction="row"
+                      spacing={0.75}
+                      useFlexGap
+                      flexWrap="wrap"
+                      sx={{ mt: 0.6 }}
+                    >
+                      {profileTravelTags.map((tag) => (
+                        <Chip
+                          key={tag}
+                          size="small"
+                          label={tag}
+                          sx={{
+                            bgcolor: "#eff6ff",
+                            color: "#2563eb",
+                            border: "1px solid #bfdbfe",
+                            fontWeight: 700,
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                ) : null}
                 <Box>
                   <Typography
                     variant="overline"
@@ -3349,28 +3476,73 @@ const UserDashboard = () => {
                                 label="Phone number"
                                 value={form.phoneNumber}
                                 onChange={handleFieldChange("phoneNumber")}
-                                placeholder="98765 43210"
+                                placeholder=""
+                                error={Boolean(phoneNumberError)}
+                                inputProps={{
+                                  inputMode: "numeric",
+                                  pattern: "[0-9]*",
+                                  maxLength: 10,
+                                }}
+                                helperText={
+                                  phoneNumberError ||
+                                  "Enter 10-digit mobile number"
+                                }
                               />
                             </Stack>
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              label="Hobby"
-                              value={form.hobby}
-                              onChange={handleFieldChange("hobby")}
-                            />
                           </Grid>
                           <Grid item xs={12}>
                             <TextField
                               fullWidth
                               size="small"
-                              label="Interests"
+                              label="Travel interest tags"
                               value={form.interests}
                               onChange={handleFieldChange("interests")}
-                              placeholder="Adventure, food, beaches"
+                              placeholder="Adventure, Food, Beaches"
+                              helperText={`${selectedInterestTags.length}/${MAX_PROFILE_INTEREST_TAGS} tags selected`}
                             />
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "#64748b", fontWeight: 700 }}
+                            >
+                              Recommended travel tags (pick up to 5)
+                            </Typography>
+                            <Stack
+                              direction="row"
+                              spacing={0.75}
+                              useFlexGap
+                              flexWrap="wrap"
+                              sx={{ mt: 1 }}
+                            >
+                              {TRAVEL_INTEREST_SUGGESTIONS.map((tag) => {
+                                const selected =
+                                  selectedInterestTags.includes(tag);
+
+                                return (
+                                  <Chip
+                                    key={tag}
+                                    label={tag}
+                                    size="small"
+                                    clickable
+                                    color={selected ? "primary" : "default"}
+                                    variant={selected ? "filled" : "outlined"}
+                                    onClick={() =>
+                                      handleSuggestedTagToggle(tag)
+                                    }
+                                    onDelete={
+                                      selected
+                                        ? () => handleSuggestedTagToggle(tag)
+                                        : undefined
+                                    }
+                                    sx={{
+                                      fontWeight: 700,
+                                      borderColor: "#bfdbfe",
+                                    }}
+                                  />
+                                );
+                              })}
+                            </Stack>
                           </Grid>
                           <Grid item xs={12}>
                             <Stack
