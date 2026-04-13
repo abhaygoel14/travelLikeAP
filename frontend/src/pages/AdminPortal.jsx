@@ -58,6 +58,7 @@ const previewModes = [
 ];
 
 const MAX_TOUR_IMAGE_SIZE = 5 * 1024 * 1024;
+const RESOLVED_INQUIRY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 const mergeUniqueImageUrls = (...groups) =>
   Array.from(
@@ -110,6 +111,9 @@ const normalizeInquiryItems = (items = {}) =>
       name: String(entry?.name || "").trim(),
       email: String(entry?.email || "").trim(),
       phone: String(entry?.phone || "").trim(),
+      source: String(entry?.source || "contact-us").trim(),
+      tourTitle: String(entry?.tourTitle || "").trim(),
+      tourCity: String(entry?.tourCity || "").trim(),
       message: String(entry?.message || "").trim(),
       status:
         String(entry?.status || "new")
@@ -118,6 +122,8 @@ const normalizeInquiryItems = (items = {}) =>
           ? "resolved"
           : "new",
       createdAt: String(entry?.createdAt || "").trim(),
+      resolvedAt: String(entry?.resolvedAt || "").trim(),
+      deleteAfterAt: String(entry?.deleteAfterAt || "").trim(),
     }))
     .sort((left, right) => {
       const leftTime = Date.parse(left.createdAt || "") || 0;
@@ -150,6 +156,8 @@ const AdminPortal = () => {
   const [inquiries, setInquiries] = useState([]);
   const [inquiriesLoading, setInquiriesLoading] = useState(false);
   const [updatingInquiryId, setUpdatingInquiryId] = useState("");
+  const [inquirySourceFilter, setInquirySourceFilter] = useState("all");
+  const [inquirySearch, setInquirySearch] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [promotingEmail, setPromotingEmail] = useState("");
   const [adminView, setAdminView] = useState("tours");
@@ -171,6 +179,48 @@ const AdminPortal = () => {
     [normalizedAdminEmail, portalUsers],
   );
   const currentPreviewTour = useMemo(() => formStateToTour(form), [form]);
+  const normalizedInquirySearch = String(inquirySearch || "")
+    .trim()
+    .toLowerCase();
+  const filteredInquiries = useMemo(
+    () =>
+      inquiries.filter((item) => {
+        const matchesSource =
+          inquirySourceFilter === "all" ||
+          String(item.source || "contact-us") === inquirySourceFilter;
+
+        if (!matchesSource) {
+          return false;
+        }
+
+        if (!normalizedInquirySearch) {
+          return true;
+        }
+
+        const searchText = [
+          item.name,
+          item.email,
+          item.phone,
+          item.message,
+          item.tourTitle,
+          item.tourCity,
+          item.source,
+        ]
+          .map((value) => String(value || "").toLowerCase())
+          .join(" ");
+
+        return searchText.includes(normalizedInquirySearch);
+      }),
+    [inquiries, inquirySourceFilter, normalizedInquirySearch],
+  );
+  const unresolvedInquiries = useMemo(
+    () => filteredInquiries.filter((item) => item.status !== "resolved"),
+    [filteredInquiries],
+  );
+  const resolvedInquiries = useMemo(
+    () => filteredInquiries.filter((item) => item.status === "resolved"),
+    [filteredInquiries],
+  );
   const previewDateLabel = formatTourDateRange(
     currentPreviewTour.startDate,
     currentPreviewTour.endDate,
@@ -293,14 +343,45 @@ const AdminPortal = () => {
 
       try {
         const snapshot = await getDbValue(dbRef(realtimeDb, "inquiries"));
+        const rawInquiries = snapshot.exists() ? snapshot.val() : {};
+
+        if (snapshot.exists()) {
+          const cleanupPayload = Object.entries(rawInquiries).reduce(
+            (accumulator, [id, entry]) => {
+              const status = String(entry?.status || "new")
+                .trim()
+                .toLowerCase();
+              const deleteAfterTime = Date.parse(
+                String(entry?.deleteAfterAt || "").trim(),
+              );
+
+              if (
+                status === "resolved" &&
+                Number.isFinite(deleteAfterTime) &&
+                deleteAfterTime > 0 &&
+                deleteAfterTime <= Date.now()
+              ) {
+                accumulator[id] = null;
+              }
+
+              return accumulator;
+            },
+            {},
+          );
+
+          if (Object.keys(cleanupPayload).length) {
+            await updateDb(dbRef(realtimeDb, "inquiries"), cleanupPayload);
+            Object.keys(cleanupPayload).forEach((id) => {
+              delete rawInquiries[id];
+            });
+          }
+        }
 
         if (!active) {
           return;
         }
 
-        setInquiries(
-          snapshot.exists() ? normalizeInquiryItems(snapshot.val()) : [],
-        );
+        setInquiries(normalizeInquiryItems(rawInquiries));
       } catch (error) {
         console.warn("Unable to load inquiries:", error);
         if (active) {
@@ -708,21 +789,35 @@ const AdminPortal = () => {
 
     try {
       setUpdatingInquiryId(inquiryId);
+      const nowIso = new Date().toISOString();
+      const deleteAfterIso = new Date(
+        Date.now() + RESOLVED_INQUIRY_RETENTION_MS,
+      ).toISOString();
       await updateDb(dbRef(realtimeDb, `inquiries/${inquiryId}`), {
         status: normalizedStatus,
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowIso,
+        resolvedAt: normalizedStatus === "resolved" ? nowIso : null,
+        deleteAfterAt: normalizedStatus === "resolved" ? deleteAfterIso : null,
       });
 
       setInquiries((prev) =>
         prev.map((item) =>
-          item.id === inquiryId ? { ...item, status: normalizedStatus } : item,
+          item.id === inquiryId
+            ? {
+                ...item,
+                status: normalizedStatus,
+                resolvedAt: normalizedStatus === "resolved" ? nowIso : "",
+                deleteAfterAt:
+                  normalizedStatus === "resolved" ? deleteAfterIso : "",
+              }
+            : item,
         ),
       );
       setStatus({
         color: "success",
         text:
           normalizedStatus === "resolved"
-            ? "Inquiry marked as resolved."
+            ? "Inquiry marked as resolved. It will be deleted automatically after 7 days."
             : "Inquiry marked as new.",
       });
     } catch (error) {
@@ -2256,7 +2351,7 @@ const AdminPortal = () => {
                       <p>
                         {inquiriesLoading
                           ? "Loading inquiries..."
-                          : `${inquiries.length} inquiry${inquiries.length === 1 ? "" : "ies"} received`}
+                          : `${filteredInquiries.length} inquiry${filteredInquiries.length === 1 ? "" : "ies"} shown`}
                       </p>
                     </div>
                   </div>
@@ -2266,66 +2361,254 @@ const AdminPortal = () => {
                       <Spinner size="sm" /> Loading inquiries...
                     </div>
                   ) : inquiries.length ? (
-                    <div className="admin-inquiry-list">
-                      {inquiries.map((item) => {
-                        const isResolved = item.status === "resolved";
-                        const isUpdating = updatingInquiryId === item.id;
+                    <>
+                      <div className="admin-preview-note admin-inquiry-note">
+                        <h5>Inquiry retention</h5>
+                        <p>
+                          Resolved inquiries are deleted from Firebase after 7
+                          days. Cleanup runs automatically when an admin opens
+                          this view.
+                        </p>
+                      </div>
 
-                        return (
-                          <div key={item.id} className="admin-inquiry-item">
-                            <div className="admin-inquiry-head">
-                              <div>
-                                <strong>{item.name || "Traveler"}</strong>
-                                <span>{item.email || "No email"}</span>
-                              </div>
-                              <Badge
-                                color={isResolved ? "success" : "warning"}
-                                pill
-                              >
-                                {isResolved ? "Resolved" : "New"}
-                              </Badge>
-                            </div>
+                      <div className="admin-inquiry-toolbar">
+                        <div className="admin-inquiry-filters">
+                          <button
+                            type="button"
+                            className={`admin-section-nav__btn ${inquirySourceFilter === "all" ? "active" : ""}`}
+                            onClick={() => setInquirySourceFilter("all")}
+                          >
+                            All
+                          </button>
+                          <button
+                            type="button"
+                            className={`admin-section-nav__btn ${inquirySourceFilter === "contact-us" ? "active" : ""}`}
+                            onClick={() => setInquirySourceFilter("contact-us")}
+                          >
+                            Contact Us
+                          </button>
+                          <button
+                            type="button"
+                            className={`admin-section-nav__btn ${inquirySourceFilter === "tour-details" ? "active" : ""}`}
+                            onClick={() =>
+                              setInquirySourceFilter("tour-details")
+                            }
+                          >
+                            Tour Details
+                          </button>
+                        </div>
 
-                            <p className="admin-inquiry-message">
-                              {item.message || "No message shared."}
-                            </p>
+                        <Input
+                          type="search"
+                          value={inquirySearch}
+                          onChange={(event) =>
+                            setInquirySearch(event.target.value)
+                          }
+                          className="admin-inquiry-search"
+                          placeholder="Search name, email, phone, or tour"
+                        />
+                      </div>
 
-                            <div className="admin-inquiry-footer">
-                              <small>
-                                Phone: {item.phone || "Not provided"}
-                              </small>
-                              <small>
-                                {item.createdAt
-                                  ? `Received: ${new Date(item.createdAt).toLocaleString()}`
-                                  : "Received date unavailable"}
-                              </small>
-                            </div>
-
-                            <div className="admin-user-actions">
-                              <Button
-                                type="button"
-                                color={isResolved ? "secondary" : "success"}
-                                outline={isResolved}
-                                size="sm"
-                                disabled={isUpdating}
-                                onClick={() =>
-                                  handleUpdateInquiryStatus(
-                                    item.id,
-                                    isResolved ? "new" : "resolved",
-                                  )
-                                }
-                              >
-                                {isUpdating
-                                  ? "Updating..."
-                                  : isResolved
-                                    ? "Mark as new"
-                                    : "Mark as resolved"}
-                              </Button>
+                      <div className="admin-inquiry-columns">
+                        <div className="admin-inquiry-column">
+                          <div className="admin-panel-card__header admin-panel-card__header--compact">
+                            <div>
+                              <h4>Unresolved</h4>
+                              <p>{unresolvedInquiries.length} pending</p>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+
+                          {unresolvedInquiries.length ? (
+                            <div className="admin-inquiry-list">
+                              {unresolvedInquiries.map((item) => {
+                                const isResolved = item.status === "resolved";
+                                const isUpdating =
+                                  updatingInquiryId === item.id;
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="admin-inquiry-item"
+                                  >
+                                    <div className="admin-inquiry-head">
+                                      <div>
+                                        <strong>
+                                          {item.name || "Traveler"}
+                                        </strong>
+                                        <span>{item.email || "No email"}</span>
+                                        {item.tourTitle ? (
+                                          <span>
+                                            Tour: {item.tourTitle}
+                                            {item.tourCity
+                                              ? ` (${item.tourCity})`
+                                              : ""}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <Badge
+                                        color={
+                                          isResolved ? "success" : "warning"
+                                        }
+                                        pill
+                                      >
+                                        {isResolved ? "Resolved" : "New"}
+                                      </Badge>
+                                    </div>
+
+                                    <p className="admin-inquiry-message">
+                                      {item.message || "No message shared."}
+                                    </p>
+
+                                    <div className="admin-inquiry-footer">
+                                      <small>
+                                        Phone: {item.phone || "Not provided"}
+                                      </small>
+                                      <small>
+                                        Source: {item.source || "contact-us"}
+                                      </small>
+                                      <small>
+                                        {item.createdAt
+                                          ? `Received: ${new Date(item.createdAt).toLocaleString()}`
+                                          : "Received date unavailable"}
+                                      </small>
+                                    </div>
+
+                                    <div className="admin-user-actions">
+                                      <Button
+                                        type="button"
+                                        color="success"
+                                        size="sm"
+                                        disabled={isUpdating}
+                                        onClick={() =>
+                                          handleUpdateInquiryStatus(
+                                            item.id,
+                                            "resolved",
+                                          )
+                                        }
+                                      >
+                                        {isUpdating
+                                          ? "Updating..."
+                                          : "Mark as resolved"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="admin-preview-note">
+                              <h5>No unresolved inquiries</h5>
+                              <p>
+                                New inquiries matching the current filter will
+                                appear here.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="admin-inquiry-column">
+                          <div className="admin-panel-card__header admin-panel-card__header--compact">
+                            <div>
+                              <h4>Resolved</h4>
+                              <p>{resolvedInquiries.length} completed</p>
+                            </div>
+                          </div>
+
+                          {resolvedInquiries.length ? (
+                            <div className="admin-inquiry-list">
+                              {resolvedInquiries.map((item) => {
+                                const isResolved = item.status === "resolved";
+                                const isUpdating =
+                                  updatingInquiryId === item.id;
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="admin-inquiry-item"
+                                  >
+                                    <div className="admin-inquiry-head">
+                                      <div>
+                                        <strong>
+                                          {item.name || "Traveler"}
+                                        </strong>
+                                        <span>{item.email || "No email"}</span>
+                                        {item.tourTitle ? (
+                                          <span>
+                                            Tour: {item.tourTitle}
+                                            {item.tourCity
+                                              ? ` (${item.tourCity})`
+                                              : ""}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <Badge
+                                        color={
+                                          isResolved ? "success" : "warning"
+                                        }
+                                        pill
+                                      >
+                                        {isResolved ? "Resolved" : "New"}
+                                      </Badge>
+                                    </div>
+
+                                    <p className="admin-inquiry-message">
+                                      {item.message || "No message shared."}
+                                    </p>
+
+                                    <div className="admin-inquiry-footer">
+                                      <small>
+                                        Phone: {item.phone || "Not provided"}
+                                      </small>
+                                      <small>
+                                        Source: {item.source || "contact-us"}
+                                      </small>
+                                      <small>
+                                        {item.deleteAfterAt
+                                          ? `Deletes: ${new Date(item.deleteAfterAt).toLocaleString()}`
+                                          : "Auto-delete date unavailable"}
+                                      </small>
+                                      <small>
+                                        {item.createdAt
+                                          ? `Received: ${new Date(item.createdAt).toLocaleString()}`
+                                          : "Received date unavailable"}
+                                      </small>
+                                    </div>
+
+                                    <div className="admin-user-actions">
+                                      <Button
+                                        type="button"
+                                        color="secondary"
+                                        outline
+                                        size="sm"
+                                        disabled={isUpdating}
+                                        onClick={() =>
+                                          handleUpdateInquiryStatus(
+                                            item.id,
+                                            "new",
+                                          )
+                                        }
+                                      >
+                                        {isUpdating
+                                          ? "Updating..."
+                                          : "Mark as new"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="admin-preview-note">
+                              <h5>No resolved inquiries</h5>
+                              <p>
+                                Resolved inquiries matching the current filter
+                                will appear here.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <div className="admin-preview-note">
                       <h5>No inquiries yet</h5>

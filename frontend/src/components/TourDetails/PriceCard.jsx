@@ -35,6 +35,8 @@ export default function PriceCard({
   price = 199,
   discounted = 149,
   title = "",
+  tourId = "",
+  tourCity = "",
   dateRange = "",
   duration = "",
   pricing = null,
@@ -824,7 +826,17 @@ export default function PriceCard({
         </motion.button>
       </div>
 
-      {open && <InquiryModal onClose={() => setOpen(false)} />}
+      {open ? (
+        <InquiryModal
+          onClose={() => setOpen(false)}
+          tour={{
+            id: tourId,
+            title,
+            city: tourCity,
+            dateRange,
+          }}
+        />
+      ) : null}
     </motion.aside>
   );
 }

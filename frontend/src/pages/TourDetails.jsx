@@ -209,6 +209,8 @@ const TourDetails = () => {
     price: selectedTour.price,
     discounted: selectedTour.discountedPrice || selectedTour.price,
     title: selectedTour.title,
+    tourId: selectedTour.id || selectedTour._id || "",
+    tourCity: selectedTour.city || "",
     dateRange: tourDateLabel,
     duration: details.duration,
     pricing: selectedTour.pricing,

@@ -320,6 +320,37 @@
   gap: 0.85rem;
 }
 
+.admin-inquiry-toolbar {
+  display: flex;
+  gap: 0.85rem;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.admin-inquiry-filters {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.admin-inquiry-search {
+  max-width: 360px;
+  border-radius: 12px !important;
+  border-color: #dbeafe !important;
+}
+
+.admin-inquiry-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.admin-inquiry-column {
+  min-width: 0;
+}
+
 .admin-inquiry-item {
   border: 1px solid #dbeafe;
   border-radius: 14px;
@@ -360,6 +391,14 @@
 
 .admin-inquiry-footer small {
   color: #64748b;
+}
+
+.admin-panel-card__header--compact {
+  margin-bottom: 0.75rem;
+}
+
+.admin-inquiry-note {
+  margin-bottom: 1rem;
 }
 
 .admin-policy-editor {
@@ -428,6 +467,19 @@
 
   .admin-rich-editor {
     max-height: 60vh;
+  }
+
+  .admin-inquiry-toolbar {
+    align-items: stretch;
+  }
+
+  .admin-inquiry-search {
+    max-width: none;
+    width: 100%;
+  }
+
+  .admin-inquiry-columns {
+    grid-template-columns: 1fr;
   }
 
   .admin-rich-editor__toolbar {
