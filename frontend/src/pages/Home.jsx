@@ -46,10 +46,12 @@ const Home = () => {
                   <span className="hightlight"> memories</span>
                 </h1>
                 <p>
-                  Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                  Ullam ipsum nobis asperiores soluta voluptas quas voluptates.
-                  Molestiae tempora dignissimos, animi praesentium molestias
-                  perferendis porro expedita delectus. Soluta natus porro.
+                  At Travel Like AP, we believe every journey is about the
+                  moments you carry back. From scenic roads to shared
+                  experiences, our rides are designed to create memories that
+                  last far beyond the trip. It’s not just about the destination,
+                  but the stories you collect along the way. Ride with us, and
+                  turn every mile into something unforgettable.
                 </p>
               </div>
             </Col>
@@ -141,8 +143,9 @@ const Home = () => {
                   With our all experience <br /> we will serve you
                 </h2>
                 <p>
-                  Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                  <br /> Quas aliquam, hic tempora inventore suscipit unde.{" "}
+                  With years of riding and planning behind us, we bring you
+                  journeys you can trust. Every detail is handled with care, so
+                  you can simply ride and enjoy the experience.{" "}
                 </p>
               </div>
 
