@@ -31,7 +31,7 @@ const contactItems = [
   },
   {
     label: "Address",
-    value: "Travel Like AP, India",
+    value: "004, Saranya apartment, Munnekolal, Kundanahalli gate, Bangalore - 560037",
     href: null,
     icon: "ri-map-pin-line",
   },

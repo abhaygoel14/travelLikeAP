@@ -84,7 +84,7 @@ const Home = () => {
                 />
               </div>
             </Col>
-            <Col lg="2">
+            <Col lg="">
               <div className="hero__img-box mt-5">
                 <MediaWithShimmer
                   as="video"
