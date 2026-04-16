@@ -38,7 +38,7 @@ const AdminRoute = () => {
 const Routers = () => {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/under-construction" replace />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/home" element={<Home />} />
       <Route path="/under-construction" element={<UnderConstruction />} />
       <Route path="/about" element={<About />} />
