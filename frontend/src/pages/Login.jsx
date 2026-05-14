@@ -319,7 +319,24 @@ const Login = () => {
     }
 
     const userRef = ref(realtimeDb, `users/${firebaseUser.uid}`);
-    const snapshot = await get(userRef);
+    let snapshot;
+    try {
+      snapshot = await get(userRef);
+    } catch (dbReadError) {
+      console.warn(
+        "Unable to read user profile from Realtime Database:",
+        dbReadError,
+      );
+      const isPermissionDenied =
+        dbReadError?.code === "PERMISSION_DENIED" ||
+        /permission denied/i.test(dbReadError?.message || "");
+
+      if (isPermissionDenied) {
+        return fallbackProfile;
+      }
+      throw dbReadError;
+    }
+
     const existingProfile = snapshot.exists() ? snapshot.val() || {} : {};
     const mergedProviders = [
       ...new Set([
@@ -387,7 +404,14 @@ const Login = () => {
         ...existingProfile,
         ...baseProfile,
       };
-      await update(userRef, mergedProfile);
+      try {
+        await update(userRef, mergedProfile);
+      } catch (dbWriteError) {
+        console.warn(
+          "Unable to update user profile in Realtime Database:",
+          dbWriteError,
+        );
+      }
       return mergedProfile;
     }
 
@@ -395,8 +419,21 @@ const Login = () => {
       ...baseProfile,
       createdAt: new Date().toISOString(),
     };
-    await set(userRef, newProfile);
+    try {
+      await set(userRef, newProfile);
+    } catch (dbWriteError) {
+      console.warn(
+        "Unable to create user profile in Realtime Database:",
+        dbWriteError,
+      );
+    }
     return newProfile;
+  };
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    return await signInWithPopup(auth, provider);
   };
 
   // useEffect(() => {
@@ -927,10 +964,7 @@ const Login = () => {
     dispatch({ type: "LOGIN_START" });
 
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithGoogle();
       const userData = await syncUserProfile(result.user, {
         provider: "google.com",
         hasPassword: result.user.providerData?.some(
