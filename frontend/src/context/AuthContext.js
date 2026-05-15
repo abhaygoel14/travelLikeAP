@@ -1,4 +1,7 @@
 import { createContext, useEffect, useReducer } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { get, ref } from "firebase/database";
+import { auth, realtimeDb } from "../utils/firebaseConfig";
 
 const storedUser = localStorage.getItem("user");
 let parsedUser = null;
@@ -89,6 +92,41 @@ const AuthReducer = (state, action) => {
 
 export const AuthContextProvider = ({ children }) => {
   const [state, dispatch] = useReducer(AuthReducer, initial_state);
+
+  useEffect(() => {
+    if (!auth || !realtimeDb) {
+      return undefined;
+    }
+
+    let isActive = true;
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!isActive) {
+        return;
+      }
+
+      if (!firebaseUser) {
+        dispatch({ type: "LOGOUT" });
+        return;
+      }
+
+      try {
+        const userRef = ref(realtimeDb, `users/${firebaseUser.uid}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          const profile = snapshot.val();
+          dispatch({ type: "SET_USER", payload: profile });
+        }
+      } catch (authProfileError) {
+        console.warn("Unable to sync Firebase auth profile:", authProfileError);
+      }
+    });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     try {

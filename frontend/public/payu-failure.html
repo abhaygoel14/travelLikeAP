@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Failed</title>
+    <meta http-equiv="refresh" content="5;url=/thank-you/failure" />
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const txnid = params.get('txnid');
+                const destination = '/thank-you/failure' + (txnid ? '?txnid=' + encodeURIComponent(txnid) : '');
+                window.location.replace(destination);
+            } catch (error) {
+                console.warn('Redirect to app failed:', error);
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #fff5f5;
+            color: #621b1b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .page {
+            text-align: center;
+            max-width: 520px;
+            padding: 24px;
+            background: #ffffff;
+            border: 1px solid #f1c0c0;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(98, 27, 27, 0.08);
+        }
+
+        h1 {
+            margin-bottom: 12px;
+            color: #b91c1c;
+        }
+
+        p {
+            margin: 12px 0;
+        }
+
+        a {
+            color: #b91c1c;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .notice {
+            margin-top: 16px;
+            font-size: 0.95rem;
+            color: #7f1d1d;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <h1>Payment failed</h1>
+        <p>We are redirecting you to the application. If this does not happen automatically, use the link below.</p>
+        <p class="notice">If the redirect fails, copy and paste this URL into your browser:</p>
+        <p><a id="fallbackLink" href="/thank-you/failure">/thank-you/failure</a></p>
+    </div>
+</body>
+
+</html>

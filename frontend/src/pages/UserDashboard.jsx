@@ -635,6 +635,7 @@ const normalizeProfile = (user = {}) => {
       Array.isArray(user.reviews) && user.reviews.length
         ? user.reviews
         : defaultReviews,
+    receipts: Array.isArray(user.receipts) ? user.receipts : [],
     wishlist: Array.isArray(user.wishlist) ? user.wishlist : [],
   };
 };
@@ -2980,7 +2981,11 @@ const UserDashboard = () => {
               {!tabLoading && isReceiptView && (
                 <Paper elevation={0} sx={sectionCardSx}>
                   <ReceiptPanel
-                    trips={itineraryTrips}
+                    trips={
+                      Array.isArray(profile.receipts) && profile.receipts.length
+                        ? profile.receipts
+                        : itineraryTrips
+                    }
                     onBack={() => setTab(0)}
                     onDownloadReceipt={handleDownloadReceipt}
                     brandLogo={Logo}

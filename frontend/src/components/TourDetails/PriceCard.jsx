@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import InquiryModal from "./InquiryModal";
+import Booking from "../Booking/Booking";
 import { AuthContext } from "../../context/AuthContext";
 import { formatPrice } from "../../utils/tourSchema";
 
@@ -44,6 +45,7 @@ export default function PriceCard({
   coupons = [],
 }) {
   const [open, setOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState({
     tone: "",
@@ -358,7 +360,7 @@ export default function PriceCard({
       return;
     }
 
-    setOpen(true);
+    setBookingOpen(true);
   };
 
   return (
@@ -825,6 +827,37 @@ export default function PriceCard({
           Send Enquiry
         </motion.button>
       </div>
+
+      {bookingOpen ? (
+        <div className="td-modal-overlay">
+          <div className="td-modal">
+            <div className="td-modal-right">
+              <button
+                className="td-modal-close"
+                type="button"
+                onClick={() => setBookingOpen(false)}
+              >
+                ✕
+              </button>
+              <Booking
+                tour={{
+                  _id: tourId,
+                  id: tourId,
+                  title,
+                  price,
+                }}
+                avgRating={0}
+                initialBooking={{
+                  guestSize: safeTravelerCount,
+                  dateDisplay: dateRange,
+                  fullName: user?.displayName || user?.firstName || "",
+                  userEmail: user?.email || "",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {open ? (
         <InquiryModal

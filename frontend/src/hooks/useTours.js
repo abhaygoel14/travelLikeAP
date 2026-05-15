@@ -5,11 +5,13 @@ export const useTours = () => {
   const [tours, setTours] = useState(fallbackNormalizedTours);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState("local");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToTours((nextTours, meta = {}) => {
       setTours(Array.isArray(nextTours) ? nextTours : fallbackNormalizedTours);
       setSource(meta.source || "local");
+      setError(meta.error || null);
       setLoading(false);
     });
 
@@ -30,6 +32,7 @@ export const useTours = () => {
     featuredTours,
     loading,
     source,
+    error,
   };
 };
 

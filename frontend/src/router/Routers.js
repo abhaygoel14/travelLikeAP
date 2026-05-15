@@ -50,6 +50,7 @@ const Routers = () => {
       <Route path="/users" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<UserDashboard />} />
       <Route path="/admin" element={<AdminRoute />} />
+      <Route path="/thank-you/:status" element={<ThankYou />} />
       <Route
         path="/terms-and-conditions"
         element={<PolicyContentPage policyKey="terms" />}

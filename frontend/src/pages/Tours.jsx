@@ -12,7 +12,7 @@ const Tours = () => {
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(0);
   const [pageLoading, setPageLoading] = useState(true);
-  const { tours, loading } = useTours();
+  const { tours, loading, error } = useTours();
 
   const toursPerPage = 8;
   const displayedTours = useMemo(
@@ -43,6 +43,22 @@ const Tours = () => {
           </Row>
         </Container>
       </section>
+      {error && (
+        <section className="pt-3">
+          <Container>
+            <Row>
+              <Col lg="12">
+                <div className="alert alert-warning">
+                  <strong>Firebase problem:</strong> Could not load tours from
+                  Firebase.
+                  {error?.message ? ` ${error.message}` : ""} Using local
+                  fallback data instead.
+                </div>
+              </Col>
+            </Row>
+          </Container>
+        </section>
+      )}
 
       <section className="pt-0">
         <Container>

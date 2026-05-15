@@ -92,7 +92,24 @@ const ReceiptPanel = ({
       <Grid container spacing={{ xs: 1.5, md: 2 }}>
         {trips.length ? (
           trips.map((trip, index) => {
-            const amountSpent = Number(trip?.price || trip?.budget || 0);
+            const amountSpent = Number(
+              trip?.amount || trip?.price || trip?.budget || 0,
+            );
+            const paymentState = String(
+              trip?.paymentStatus || trip?.status || "Paid",
+            ).toLowerCase();
+            const badgeLabel =
+              paymentState === "failure"
+                ? "Failed"
+                : paymentState === "pending"
+                  ? "Pending"
+                  : "Paid";
+            const badgeStyles =
+              paymentState === "failure"
+                ? { bgcolor: "#fee2e2", color: "#b91c1c" }
+                : paymentState === "pending"
+                  ? { bgcolor: "#fef3c7", color: "#b45309" }
+                  : { bgcolor: "#eff6ff", color: "#2563eb" };
 
             return (
               <Grid item xs={12} md={6} key={`${trip.title}-${index}-receipt`}>
@@ -123,8 +140,8 @@ const ReceiptPanel = ({
                       <Chip
                         size="small"
                         icon={<CreditCardIcon sx={{ fontSize: 16 }} />}
-                        label="Paid"
-                        sx={{ bgcolor: "#eff6ff", color: "#2563eb" }}
+                        label={badgeLabel}
+                        sx={badgeStyles}
                       />
                     </Stack>
 

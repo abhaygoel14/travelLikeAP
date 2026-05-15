@@ -134,7 +134,7 @@ const normalizeInquiryItems = (items = {}) =>
 
 const AdminPortal = () => {
   const { user, userRole, dispatch } = useContext(AuthContext);
-  const { tours, loading, source } = useTours();
+  const { tours, loading, source, error: toursError } = useTours();
   const [form, setForm] = useState(() => tourToFormState(createEmptyTour()));
   const [selectedTourId, setSelectedTourId] = useState("");
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -1079,6 +1079,18 @@ const AdminPortal = () => {
               </div>
             </Col>
           </Row>
+          {toursError && (
+            <Row className="mt-3">
+              <Col lg="12">
+                <div className="alert alert-warning">
+                  <strong>Firebase read issue:</strong>
+                  {toursError?.message ? ` ${toursError.message}` : ""}
+                  {source === "local" &&
+                    " Local fallback tours are being shown."}
+                </div>
+              </Col>
+            </Row>
+          )}
 
           {!FEATURE_FLAGS.adminTourPortal && (
             <Alert color="warning">
