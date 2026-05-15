@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Container, Row, Col, Button } from "reactstrap";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { get, ref, update } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
 import { AuthContext } from "../context/AuthContext";

@@ -1,7 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
 import "./booking.css";
 import { Form, FormGroup, ListGroupItem, ListGroup, Button } from "reactstrap";
-import { useNavigate } from "react-router-dom";
 import { get, ref, update } from "firebase/database";
 import { AuthContext } from "../../context/AuthContext";
 import { formatPrice } from "../../utils/tourSchema";
@@ -9,7 +8,6 @@ import { auth, realtimeDb } from "../../utils/firebaseConfig";
 
 const Booking = ({ tour, avgRating, initialBooking = {} }) => {
   const { price, reviews, title } = tour;
-  const navigate = useNavigate();
 
   const { user } = useContext(AuthContext);
 
