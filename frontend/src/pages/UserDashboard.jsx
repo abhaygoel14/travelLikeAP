@@ -817,7 +817,7 @@ const UserDashboard = () => {
     return () => {
       active = false;
     };
-  }, [currentUserUid, realtimeDb]);
+  }, [currentUserUid]);
 
   useEffect(() => {
     let active = true;
@@ -1215,88 +1215,88 @@ const UserDashboard = () => {
     }
   };
 
-  const handleEditCollectionItem = async (key, index) => {
-    const currentItems = [...(profile[key] || [])];
-    const currentItem = currentItems[index];
+  // const handleEditCollectionItem = async (key, index) => {
+  //   const currentItems = [...(profile[key] || [])];
+  //   const currentItem = currentItems[index];
 
-    if (!currentItem) {
-      return;
-    }
+  //   if (!currentItem) {
+  //     return;
+  //   }
 
-    let nextItem = currentItem;
+  //   let nextItem = currentItem;
 
-    if (key === "upcomingTrips") {
-      const title = window.prompt("Trip title", currentItem.title || "");
-      if (title === null) return;
-      const date = window.prompt("Departure date", currentItem.date || "");
-      if (date === null) return;
-      const statusValue = window.prompt(
-        "Trip status",
-        currentItem.status || "",
-      );
-      if (statusValue === null) return;
+  //   if (key === "upcomingTrips") {
+  //     const title = window.prompt("Trip title", currentItem.title || "");
+  //     if (title === null) return;
+  //     const date = window.prompt("Departure date", currentItem.date || "");
+  //     if (date === null) return;
+  //     const statusValue = window.prompt(
+  //       "Trip status",
+  //       currentItem.status || "",
+  //     );
+  //     if (statusValue === null) return;
 
-      nextItem = {
-        ...currentItem,
-        title: title.trim() || currentItem.title,
-        date: date.trim() || currentItem.date,
-        status: statusValue.trim() || currentItem.status,
-      };
-    }
+  //     nextItem = {
+  //       ...currentItem,
+  //       title: title.trim() || currentItem.title,
+  //       date: date.trim() || currentItem.date,
+  //       status: statusValue.trim() || currentItem.status,
+  //     };
+  //   }
 
-    if (key === "paymentOptions") {
-      const label = window.prompt("Payment label", currentItem.label || "");
-      if (label === null) return;
-      const description = window.prompt(
-        "Payment description",
-        currentItem.description || "",
-      );
-      if (description === null) return;
+  //   if (key === "paymentOptions") {
+  //     const label = window.prompt("Payment label", currentItem.label || "");
+  //     if (label === null) return;
+  //     const description = window.prompt(
+  //       "Payment description",
+  //       currentItem.description || "",
+  //     );
+  //     if (description === null) return;
 
-      nextItem = {
-        ...currentItem,
-        label: label.trim() || currentItem.label,
-        description: description.trim() || currentItem.description,
-      };
-    }
+  //     nextItem = {
+  //       ...currentItem,
+  //       label: label.trim() || currentItem.label,
+  //       description: description.trim() || currentItem.description,
+  //     };
+  //   }
 
-    if (key === "reviews") {
-      const title = window.prompt("Review title", currentItem.title || "");
-      if (title === null) return;
-      const text = window.prompt("Review text", currentItem.text || "");
-      if (text === null) return;
+  //   if (key === "reviews") {
+  //     const title = window.prompt("Review title", currentItem.title || "");
+  //     if (title === null) return;
+  //     const text = window.prompt("Review text", currentItem.text || "");
+  //     if (text === null) return;
 
-      nextItem = {
-        ...currentItem,
-        title: title.trim() || currentItem.title,
-        text: text.trim() || currentItem.text,
-      };
-    }
+  //     nextItem = {
+  //       ...currentItem,
+  //       title: title.trim() || currentItem.title,
+  //       text: text.trim() || currentItem.text,
+  //     };
+  //   }
 
-    currentItems[index] = nextItem;
+  //   currentItems[index] = nextItem;
 
-    try {
-      const nextProfile = normalizeProfile({
-        ...profile,
-        [key]: currentItems,
-        updatedAt: new Date().toISOString(),
-      });
+  //   try {
+  //     const nextProfile = normalizeProfile({
+  //       ...profile,
+  //       [key]: currentItems,
+  //       updatedAt: new Date().toISOString(),
+  //     });
 
-      const labels = {
-        upcomingTrips: "Trip",
-        paymentOptions: "Payment option",
-        reviews: "Review",
-      };
+  //     const labels = {
+  //       upcomingTrips: "Trip",
+  //       paymentOptions: "Payment option",
+  //       reviews: "Review",
+  //     };
 
-      await persistProfile(
-        nextProfile,
-        `${labels[key] || "Item"} updated successfully.`,
-      );
-    } catch (error) {
-      console.error(`Error editing ${key}:`, error);
-      setStatus({ severity: "error", message: error.message });
-    }
-  };
+  //     await persistProfile(
+  //       nextProfile,
+  //       `${labels[key] || "Item"} updated successfully.`,
+  //     );
+  //   } catch (error) {
+  //     console.error(`Error editing ${key}:`, error);
+  //     setStatus({ severity: "error", message: error.message });
+  //   }
+  // };
 
   const handleAvatarUpload = async (event) => {
     const file = event.target.files?.[0];
