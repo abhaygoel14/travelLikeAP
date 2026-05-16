@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
+import { formatPrice } from "../../utils/tourSchema";
 
 const ReceiptPanel = ({
   trips = [],
@@ -160,7 +161,11 @@ const ReceiptPanel = ({
                         color="#1c1917"
                         fontWeight={700}
                       >
-                        Amount spent: ${amountSpent}
+                        Amount spent: {formatPrice(amountSpent)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Payment done in INR. Download the receipt for the full
+                        trip breakdown.
                       </Typography>
                     </Stack>
 

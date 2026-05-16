@@ -181,12 +181,12 @@ const Booking = ({ tour, avgRating, initialBooking = {} }) => {
       route: tourId ? `/tours/${tourId}` : "/tours",
     };
 
-    const surl = `${window.location.origin}/payu-success.html?txnid=${encodeURIComponent(
-      txnid,
-    )}`;
-    const furl = `${window.location.origin}/payu-failure.html?txnid=${encodeURIComponent(
-      txnid,
-    )}`;
+    const payuEndpoint =
+      "https://us-central1-travel-like-ap-e5e2e.cloudfunctions.net/payuResponse";
+
+    // Pass txnid as query param so you can use it later
+    const surl = `${payuEndpoint}?txnid=${encodeURIComponent(txnid)}`;
+    const furl = `${payuEndpoint}?txnid=${encodeURIComponent(txnid)}`;
 
     await savePendingReceiptToFirebase(receiptData);
 

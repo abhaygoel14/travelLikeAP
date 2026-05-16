@@ -1,10 +1,66 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Slider from "react-slick";
+import { get, ref } from "firebase/database";
+import { realtimeDb } from "../../utils/firebaseConfig";
 import ava01 from "../../assets/images/ava-1.jpg";
 import ava02 from "../../assets/images/ava-2.jpg";
 import ava03 from "../../assets/images/ava-3.jpg";
 
+const DEFAULT_TESTIMONIALS = [
+  {
+    id: "default-1",
+    title: "Seamless travel experience",
+    message:
+      "Travel Like AP made every part of our trip effortless. The routes were beautiful and the support was excellent.",
+    authorName: "Ayesha K.",
+    authorAvatar: ava01,
+  },
+  {
+    id: "default-2",
+    title: "Memories that last",
+    message:
+      "We loved the attention to detail throughout the journey. It felt like a trip crafted just for us.",
+    authorName: "Rahul S.",
+    authorAvatar: ava02,
+  },
+  {
+    id: "default-3",
+    title: "A fan forever",
+    message:
+      "Every mile was worth it. I can’t wait to travel with Travel Like AP again.",
+    authorName: "Nina P.",
+    authorAvatar: ava03,
+  },
+];
+
+const normalizeFanStories = (value = {}) =>
+  Object.entries(value || {})
+    .map(([id, entry]) => ({
+      id: String(id),
+      title: String(entry?.title || entry?.name || "Fan story").trim(),
+      message: String(entry?.message || entry?.text || "").trim(),
+      authorName: String(entry?.authorName || entry?.name || "Traveler").trim(),
+      authorAvatar: String(entry?.authorAvatar || entry?.avatar || "").trim(),
+      visible: entry?.visible === false ? false : true,
+      createdAt: String(entry?.createdAt || "").trim(),
+    }))
+    .filter((story) => story.visible && story.message)
+    .sort(
+      (left, right) =>
+        Date.parse(right.createdAt || "") - Date.parse(left.createdAt || ""),
+    );
+
 const Testimonials = () => {
+  const [stories, setStories] = useState([]);
+  const [expandedItems, setExpandedItems] = useState({});
+
+  const toggleExpanded = (id) => {
+    setExpandedItems((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   const settings = {
     dots: true,
     infinite: true,
@@ -36,75 +92,77 @@ const Testimonials = () => {
     ],
   };
 
+  useEffect(() => {
+    let active = true;
+
+    const loadStories = async () => {
+      if (!realtimeDb) {
+        return;
+      }
+
+      try {
+        const snapshot = await get(ref(realtimeDb, "siteContent/fanStories"));
+        if (!active) {
+          return;
+        }
+
+        setStories(
+          normalizeFanStories(snapshot.exists() ? snapshot.val() : {}),
+        );
+      } catch (error) {
+        console.warn("Unable to load fan stories:", error);
+      }
+    };
+
+    loadStories();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const storyItems = useMemo(
+    () => (stories.length ? stories : DEFAULT_TESTIMONIALS),
+    [stories],
+  );
+
   return (
     <Slider {...settings}>
-      <div className="testimonial py-4 px-3">
-        <p>
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Minus sit,
-          explicabo provident hic distinctio molestias voluptates nobis alias
-          placeat suscipt earum debitits recusandae voluptate illum expedita
-          corrupti aliquid doloribus delectus?
-        </p>
+      {storyItems.map((item) => {
+        const isExpanded = !!expandedItems[item.id];
+        const shouldShowToggle = item.message.length > 120;
 
-        <div className="d-flex align-items-center gap-4 mt-3">
-          <img src={ava01} className="w-25 h-25 rounded-2" alt="" />
-          <div>
-            <h6 className="mb-0 mt-3">John Doe</h6>
-            <p>Customer</p>
+        return (
+          <div key={item.id} className="testimonial py-4 px-3">
+            <p
+              className={`testimonial__message ${isExpanded ? "expanded" : ""}`}
+            >
+              {item.message}
+            </p>
+            {shouldShowToggle && (
+              <button
+                type="button"
+                className="testimonial__more"
+                onClick={() => toggleExpanded(item.id)}
+              >
+                {isExpanded ? "Show less" : "Read more"}
+              </button>
+            )}
+
+            <div className="d-flex align-items-center gap-4 mt-3">
+              <img
+                src={item.authorAvatar || ava01}
+                className="w-25 h-25 rounded-2"
+                alt={item.authorName || "Story author"}
+              />
+              <div>
+                <h6 className="mb-0 mt-3">{item.authorName || "Traveler"}</h6>
+                <p>{item.title || "Fan story"}</p>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <div className="testimonial py-4 px-3">
-        <p>
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Minus sit,
-          explicabo provident hic distinctio molestias voluptates nobis alias
-          placeat suscipt earum debitits recusandae voluptate illum expedita
-          corrupti aliquid doloribus delectus?
-        </p>
-
-        <div className="d-flex align-items-center gap-4 mt-3">
-          <img src={ava02} className="w-25 h-25 rounded-2" alt="" />
-          <div>
-            <h6 className="mb-0 mt-3">Lia Franklin</h6>
-            <p>Customer</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="testimonial py-4 px-3">
-        <p>
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Minus sit,
-          explicabo provident hic distinctio molestias voluptates nobis alias
-          placeat suscipt earum debitits recusandae voluptate illum expedita
-          corrupti aliquid doloribus delectus?
-        </p>
-
-        <div className="d-flex align-items-center gap-4 mt-3">
-          <img src={ava03} className="w-25 h-25 rounded-2" alt="" />
-          <div>
-            <h6 className="mb-0 mt-3">John Doe</h6>
-            <p>Customer</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="testimonial py-4 px-3">
-        <p>
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Minus sit,
-          explicabo provident hic distinctio molestias voluptates nobis alias
-          placeat suscipt earum debitits recusandae voluptate illum expedita
-          corrupti aliquid doloribus delectus?
-        </p>
-
-        <div className="d-flex align-items-center gap-4 mt-3">
-          <img src={ava03} className="w-25 h-25 rounded-2" alt="" />
-          <div>
-            <h6 className="mb-0 mt-3">John Doe</h6>
-            <p>Customer</p>
-          </div>
-        </div>
-      </div>
+        );
+      })}
     </Slider>
   );
 };

@@ -40,7 +40,7 @@ import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { updateProfile, verifyBeforeUpdateEmail } from "firebase/auth";
-import { get, ref, update } from "firebase/database";
+import { get, ref, set, update } from "firebase/database";
 import {
   getDownloadURL,
   ref as storageRef,
@@ -649,6 +649,33 @@ const normalizeInterestTags = (value = []) =>
     ),
   ).slice(0, MAX_PROFILE_INTEREST_TAGS);
 
+const normalizeFanReviews = (value = {}) => {
+  const items = Array.isArray(value)
+    ? value.filter(Boolean)
+    : Object.entries(value || {}).map(([id, entry]) => ({
+        id,
+        ...entry,
+      }));
+
+  return items
+    .map((item) => ({
+      id: String(item.id || `fan-${Date.now()}`),
+      authorUid: String(item.authorUid || "").trim(),
+      authorName:
+        String(item.authorName || item.name || item.displayName || "").trim() ||
+        "Traveler",
+      authorAvatar: String(item.authorAvatar || item.avatar || "").trim(),
+      title: String(item.title || item.name || "Fan story").trim(),
+      message: String(item.message || item.text || "").trim(),
+      createdAt: String(item.createdAt || ""),
+      visible: item.visible === false ? false : true,
+    }))
+    .sort(
+      (left, right) =>
+        Date.parse(right.createdAt || "") - Date.parse(left.createdAt || ""),
+    );
+};
+
 const createProfileFormState = (profileData = {}) => ({
   firstName: profileData.firstName || "",
   lastName: profileData.lastName || "",
@@ -683,6 +710,11 @@ const UserDashboard = () => {
     visibility: "private",
   });
   const [viewingMemory, setViewingMemory] = useState(null);
+  const [fanStoryTitle, setFanStoryTitle] = useState("");
+  const [fanStoryMessage, setFanStoryMessage] = useState("");
+  const [fanStories, setFanStories] = useState([]);
+  const [fanStoriesLoading, setFanStoriesLoading] = useState(false);
+  const [submittingFanStory, setSubmittingFanStory] = useState(false);
   const [tabLoading, setTabLoading] = useState(true);
   const [currentGreetingDate, setCurrentGreetingDate] = useState(
     () => new Date(),
@@ -745,6 +777,47 @@ const UserDashboard = () => {
   }, [isEditingProfile, user]);
 
   const currentUserUid = String(user?.uid || "").trim();
+
+  const myFanStories = useMemo(
+    () => fanStories.filter((story) => story.authorUid === currentUserUid),
+    [fanStories, currentUserUid],
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadFanStories = async () => {
+      if (!realtimeDb) {
+        return;
+      }
+
+      setFanStoriesLoading(true);
+
+      try {
+        const snapshot = await get(ref(realtimeDb, "siteContent/fanStories"));
+
+        if (!active) {
+          return;
+        }
+
+        setFanStories(
+          normalizeFanReviews(snapshot.exists() ? snapshot.val() : {}),
+        );
+      } catch (error) {
+        console.error("Error loading fan stories:", error);
+      } finally {
+        if (active) {
+          setFanStoriesLoading(false);
+        }
+      }
+    };
+
+    loadFanStories();
+
+    return () => {
+      active = false;
+    };
+  }, [currentUserUid, realtimeDb]);
 
   useEffect(() => {
     let active = true;
@@ -1445,6 +1518,70 @@ const UserDashboard = () => {
     }
   };
 
+  const handleSubmitFanStory = async () => {
+    if (!currentUserUid || !realtimeDb) {
+      setStatus({
+        severity: "error",
+        message: "Unable to share story without a valid user session.",
+      });
+      return;
+    }
+
+    const title = String(fanStoryTitle || "").trim();
+    const message = String(fanStoryMessage || "").trim();
+
+    if (!title || !message) {
+      setStatus({
+        severity: "error",
+        message: "Please add both a story title and message before sharing.",
+      });
+      return;
+    }
+
+    setSubmittingFanStory(true);
+
+    try {
+      const storyId = `fan-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 6)}`;
+
+      const nextItem = {
+        id: storyId,
+        authorUid: currentUserUid,
+        authorName:
+          String(
+            profile.displayName || profile.firstName || profile.username,
+          ).trim() || "Traveler",
+        authorAvatar: String(profile.photoURL || "").trim(),
+        title,
+        message,
+        visible: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      await set(ref(realtimeDb, `siteContent/fanStories/${storyId}`), nextItem);
+
+      setFanStories((prevStories) =>
+        normalizeFanReviews([nextItem, ...prevStories]),
+      );
+
+      setStatus({
+        severity: "success",
+        message: "Your story was shared successfully.",
+      });
+      setFanStoryTitle("");
+      setFanStoryMessage("");
+    } catch (error) {
+      console.error("Error submitting fan story:", error);
+      setStatus({
+        severity: "error",
+        message: "Unable to share your story right now. Please try again.",
+      });
+    } finally {
+      setSubmittingFanStory(false);
+    }
+  };
+
   const handleOpenMemoryViewer = (memory) => {
     setViewingMemory(memory || null);
   };
@@ -1749,11 +1886,18 @@ const UserDashboard = () => {
     const receiptTitle = trip?.title || "Travel Receipt";
 
     try {
-      const amountSpent = Number(trip?.price || trip?.budget || 199);
+      const amountSpent = Number(
+        trip?.amount || trip?.price || trip?.budget || 199,
+      );
       const serviceFee = Math.max(12, Math.round(amountSpent * 0.05));
       const taxes = Math.max(18, Math.round(amountSpent * 0.08));
       const totalPaid = amountSpent + serviceFee + taxes;
       const receiptNumber = `TLA-${String(index + 1).padStart(3, "0")}-${new Date().getFullYear()}`;
+      const travelerEmail = profile.email || user?.email || "Not provided";
+      const formattedAmount = `₹${amountSpent.toLocaleString("en-IN")}`;
+      const formattedServiceFee = `₹${serviceFee.toLocaleString("en-IN")}`;
+      const formattedTaxes = `₹${taxes.toLocaleString("en-IN")}`;
+      const formattedTotal = `₹${totalPaid.toLocaleString("en-IN")}`;
 
       const canvas = document.createElement("canvas");
       canvas.width = 1240;
@@ -1816,6 +1960,7 @@ const UserDashboard = () => {
       ctx.fillStyle = "#334155";
       [
         `Name: ${firstName}`,
+        `Email: ${travelerEmail}`,
         `Trip: ${receiptTitle}`,
         `Date: ${trip?.date || "Upcoming"}`,
       ].forEach((line, lineIndex) => {
@@ -1826,6 +1971,7 @@ const UserDashboard = () => {
         `Destination: ${trip?.city || trip?.relatedTour?.city || "Travel destination"}`,
         `Duration: ${trip?.status || "Custom plan"}`,
         `Payment status: Paid`,
+        `Mode: PayU (INR)`,
       ].forEach((line, lineIndex) => {
         ctx.fillText(line, 650, 346 + lineIndex * 36);
       });
@@ -1846,9 +1992,9 @@ const UserDashboard = () => {
       ctx.font = "18px Arial";
       ctx.fillStyle = "#334155";
       const summaryRows = [
-        ["Trip package", `$${amountSpent}`],
-        ["Service fee", `$${serviceFee}`],
-        ["Taxes & charges", `$${taxes}`],
+        ["Base fare", formattedAmount],
+        ["Service fee", formattedServiceFee],
+        ["GST & charges", formattedTaxes],
       ];
 
       summaryRows.forEach(([label, value], rowIndex) => {
@@ -1865,13 +2011,13 @@ const UserDashboard = () => {
       ctx.fillStyle = "#0f172a";
       ctx.font = "700 28px Arial";
       ctx.fillText("Total paid", 104, 1126);
-      ctx.fillText(`$${totalPaid}`, 986, 1126);
+      ctx.fillText(formattedTotal, 986, 1126);
 
       ctx.fillStyle = "#475569";
       ctx.font = "18px Arial";
       wrapCanvasText(
         ctx,
-        "Thank you for booking with Travel like AP. Keep this receipt for your records and trip support.",
+        "Thank you for booking with Travel like AP. This receipt reflects payment completed in Indian Rupees (INR). Keep it for your records and trip support.",
         1010,
       ).forEach((line, lineIndex) => {
         ctx.fillText(line, 104, 1180 + lineIndex * 28);
@@ -2398,6 +2544,125 @@ const UserDashboard = () => {
               <Box sx={{ display: { xs: "none", md: "block" } }}>
                 {renderWelcomeSection()}
               </Box>
+
+              {!tabLoading && tab === 0 && (
+                <Paper elevation={0} sx={sectionCardSx}>
+                  <Stack spacing={2.5}>
+                    <Box>
+                      <Typography variant="h5" fontWeight={800} color="#1c1917">
+                        Fan story for Travel like AP
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Share your trip story and let the world know how you
+                        enjoyed travel with us. Your story can appear on the
+                        homepage.
+                      </Typography>
+                    </Box>
+
+                    <Stack spacing={2}>
+                      <TextField
+                        fullWidth
+                        label="Story title"
+                        placeholder="A perfect ride from start to finish"
+                        value={fanStoryTitle}
+                        onChange={(event) =>
+                          setFanStoryTitle(event.target.value)
+                        }
+                        size="small"
+                      />
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={4}
+                        label="Your fan story"
+                        placeholder="The trip felt well managed from start to finish, with great scenic stops in between."
+                        value={fanStoryMessage}
+                        onChange={(event) =>
+                          setFanStoryMessage(event.target.value)
+                        }
+                        size="small"
+                      />
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                        <Button
+                          variant="contained"
+                          onClick={handleSubmitFanStory}
+                          disabled={submittingFanStory}
+                          sx={{
+                            borderRadius: 3,
+                            bgcolor: "#2563eb",
+                            color: "#fff",
+                            boxShadow: "none",
+                            textTransform: "none",
+                            "&:hover": {
+                              bgcolor: "#1d4ed8",
+                              boxShadow: "none",
+                            },
+                          }}
+                        >
+                          {submittingFanStory ? "Sharing..." : "Share story"}
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            setFanStoryTitle("");
+                            setFanStoryMessage("");
+                          }}
+                          sx={{ borderRadius: 3, textTransform: "none" }}
+                        >
+                          Reset
+                        </Button>
+                      </Stack>
+                    </Stack>
+
+                    <Divider sx={{ borderColor: "#dbeafe" }} />
+
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Your submitted story
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 2 }}
+                      >
+                        This preview shows the latest story you have shared.
+                      </Typography>
+
+                      {fanStoriesLoading ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Loading your story...
+                        </Typography>
+                      ) : myFanStories.length ? (
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 2,
+                            borderRadius: 3,
+                            border: "1px solid #dbeafe",
+                            bgcolor: "#f8fbff",
+                          }}
+                        >
+                          <Typography fontWeight={700} sx={{ mb: 1 }}>
+                            {myFanStories[0].title || "My travel story"}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {myFanStories[0].message}
+                          </Typography>
+                        </Paper>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          Once you share a story, it will appear here and on the
+                          homepage.
+                        </Typography>
+                      )}
+                    </Box>
+                  </Stack>
+                </Paper>
+              )}
 
               <Dialog
                 open={memoryUploadOpen}
@@ -3712,42 +3977,14 @@ const UserDashboard = () => {
                                           Budget:{" "}
                                           {formatPrice(trip.budget || 990)}
                                         </Typography>
-                                        <Stack direction="row" spacing={0.5}>
-                                          <Button
-                                            size="small"
-                                            onClick={() =>
-                                              handleEditCollectionItem(
-                                                "upcomingTrips",
-                                                index,
-                                              )
-                                            }
-                                            sx={{
-                                              ...compactPillButtonSx,
-                                              minWidth: 0,
-                                              px: 1,
-                                            }}
-                                          >
-                                            Edit
-                                          </Button>
-                                          <Button
-                                            size="small"
-                                            color="error"
-                                            onClick={() =>
-                                              handleDeleteCollectionItem(
-                                                "upcomingTrips",
-                                                index,
-                                                "Trip removed from your dashboard.",
-                                              )
-                                            }
-                                            sx={{
-                                              ...compactPillButtonSx,
-                                              minWidth: 0,
-                                              px: 1,
-                                            }}
-                                          >
-                                            Delete
-                                          </Button>
-                                        </Stack>
+                                        <Chip
+                                          size="small"
+                                          label="Booked"
+                                          sx={{
+                                            bgcolor: "#dbeafe",
+                                            color: "#2563eb",
+                                          }}
+                                        />
                                       </Stack>
                                     </CardContent>
                                   </Card>

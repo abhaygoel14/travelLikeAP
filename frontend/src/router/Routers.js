@@ -11,6 +11,7 @@ import About from "../pages/About";
 import ContactUs from "../pages/ContactUs";
 import UserDashboard from "../pages/UserDashboard";
 import AdminPortal from "../pages/AdminPortal";
+import PayuFailure from "../pages/PaymentFailure";
 import PolicyContentPage from "../pages/PolicyContentPage";
 import UnderConstruction from "../pages/UnderConstruction";
 import { AuthContext } from "../context/AuthContext";
@@ -51,6 +52,7 @@ const Routers = () => {
       <Route path="/dashboard" element={<UserDashboard />} />
       <Route path="/admin" element={<AdminRoute />} />
       <Route path="/thank-you/:status" element={<ThankYou />} />
+      <Route path="/payu-failure" element={<PayuFailure />} />
       <Route
         path="/terms-and-conditions"
         element={<PolicyContentPage policyKey="terms" />}

@@ -524,6 +524,14 @@ export const tourToFormState = (tour = createEmptyTour()) => {
     itineraryText: normalizedTour.itinerary
       .map((day) => `${day.title} | ${day.desc}`)
       .join("\n"),
+    reviewList: normalizedTour.reviews.map((review) => ({
+      name: String(review.name || review?.reviewer || "").trim(),
+      rating: String(Number(review.rating || 0) || ""),
+      text: String(
+        review.text || review.comment || review.message || "",
+      ).trim(),
+      avatar: String(review.avatar || review.photo || "").trim(),
+    })),
     policyText: normalizedTour.policyRows
       .map((row) => `${row.days} | ${row.refund} | ${row.notes}`)
       .join("\n"),
@@ -647,6 +655,15 @@ export const formStateToTour = (formState = {}) => {
         notes,
       }),
     ),
+    reviews: (Array.isArray(formState.reviewList) ? formState.reviewList : [])
+      .map((item) => ({
+        name: String(item?.name || "").trim(),
+        rating: toNumber(item?.rating, 0),
+        text: String(item?.text || "").trim(),
+        avatar: String(item?.avatar || "").trim(),
+        createdAt: new Date().toISOString(),
+      }))
+      .filter((item) => item.name || item.rating || item.text),
   });
 };
 

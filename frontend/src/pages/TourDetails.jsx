@@ -19,6 +19,7 @@ import useTours from "../hooks/useTours";
 import { AuthContext } from "../context/AuthContext";
 import { realtimeDb } from "../utils/firebaseConfig";
 import { formatPrice, formatTourDateRange } from "../utils/tourSchema";
+import calculateAvgRating from "../utils/avgRating";
 
 const TourDetails = () => {
   const { id } = useParams();
@@ -26,6 +27,11 @@ const TourDetails = () => {
   const { user, dispatch } = useContext(AuthContext);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistSaving, setWishlistSaving] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState(null);
+  const [localReviews, setLocalReviews] = useState([]);
 
   useEffect(() => {
     try {
@@ -43,6 +49,22 @@ const TourDetails = () => {
       ) || null,
     [id, tours],
   );
+
+  useEffect(() => {
+    if (Array.isArray(selectedTour?.reviews) && selectedTour.reviews.length) {
+      setLocalReviews([]);
+    }
+  }, [selectedTour?.reviews]);
+
+  const reviewerName = useMemo(() => {
+    if (user?.displayName) {
+      return user.displayName;
+    }
+    if (user?.email) {
+      return user.email.split("@")[0];
+    }
+    return "Guest";
+  }, [user]);
 
   const images = useMemo(
     () =>
@@ -218,6 +240,86 @@ const TourDetails = () => {
     coupons: selectedTour.coupons,
   };
 
+  const displayedReviews =
+    Array.isArray(localReviews) && localReviews.length
+      ? localReviews
+      : Array.isArray(selectedTour.reviews)
+        ? selectedTour.reviews
+        : [];
+
+  const handleSubmitReview = async (event) => {
+    event.preventDefault();
+
+    if (!user?.uid) {
+      setReviewStatus({
+        type: "error",
+        message: "Please log in to submit a review.",
+      });
+      return;
+    }
+
+    if (!String(reviewText || "").trim()) {
+      setReviewStatus({
+        type: "error",
+        message: "Please add your review text before submitting.",
+      });
+      return;
+    }
+
+    const tourId = String(selectedTour.id || selectedTour._id || "").trim();
+    if (!tourId) {
+      setReviewStatus({
+        type: "error",
+        message: "Unable to save your review: tour ID is missing.",
+      });
+      return;
+    }
+
+    const existingReviews = Array.isArray(selectedTour.reviews)
+      ? selectedTour.reviews
+      : [];
+
+    const nextReview = {
+      name: reviewerName,
+      rating: Number(reviewRating) || 5,
+      text: String(reviewText || "").trim(),
+      avatar: user?.photoURL || "",
+      userUid: user.uid,
+      createdAt: new Date().toISOString(),
+    };
+
+    const nextReviews = [...existingReviews, nextReview];
+    const average = calculateAvgRating(nextReviews);
+    const nextAvgRating = Number(average.avgRating || 0);
+
+    setReviewSaving(true);
+    setReviewStatus(null);
+
+    try {
+      await update(ref(realtimeDb, `tours/${tourId}`), {
+        reviews: nextReviews,
+        avgRating: nextAvgRating,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setLocalReviews(nextReviews);
+      setReviewText("");
+      setReviewRating(5);
+      setReviewStatus({
+        type: "success",
+        message: "Thank you! Your review was added.",
+      });
+    } catch (error) {
+      console.error("Error saving review:", error);
+      setReviewStatus({
+        type: "error",
+        message: error?.message || "Unable to save your review right now.",
+      });
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
   return (
     <section className="tour-details-page">
       <Container>
@@ -347,8 +449,69 @@ const TourDetails = () => {
               <PolicyTable rows={selectedTour.policyRows} />
             </div>
             <div id="reviews">
+              <div className="td-card td-review-submit-card">
+                <h4>Share your experience</h4>
+                <p>
+                  Leave a review for this tour and help other travellers book
+                  with confidence.
+                </p>
+                {reviewStatus ? (
+                  <Alert
+                    color={reviewStatus.type === "error" ? "danger" : "success"}
+                  >
+                    {reviewStatus.message}
+                  </Alert>
+                ) : null}
+                {!user ? (
+                  <Alert color="warning">
+                    Please log in to add a review for this trip.
+                  </Alert>
+                ) : (
+                  <form
+                    onSubmit={handleSubmitReview}
+                    className="td-review-form"
+                  >
+                    <div className="td-review-form-row td-review-rating-row">
+                      <span className="td-review-label">Rating</span>
+                      <div className="td-review-stars">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <button
+                            key={value}
+                            type="button"
+                            className={`td-review-star ${
+                              reviewRating >= value ? "active" : ""
+                            }`}
+                            onClick={() => setReviewRating(value)}
+                            aria-label={`${value} star${value > 1 ? "s" : ""}`}
+                          >
+                            <i className="ri-star-fill"></i>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="td-review-form-row">
+                      <label htmlFor="reviewText">Your review</label>
+                      <textarea
+                        id="reviewText"
+                        rows="5"
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                        placeholder="The trip felt well managed from start to finish, with great scenic stops in between."
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="td-btn td-btn--primary td-review-submit-btn"
+                      disabled={reviewSaving}
+                    >
+                      {reviewSaving ? "Saving..." : "Submit review"}
+                    </button>
+                  </form>
+                )}
+              </div>
+
               <GuestReviews
-                reviews={selectedTour.reviews}
+                reviews={displayedReviews}
                 avgRating={selectedTour.avgRating}
                 title={selectedTour.title}
               />
@@ -358,7 +521,7 @@ const TourDetails = () => {
           <Col lg="4">
             <div className="td-sidebar-stack">
               <ReviewSnapshotCard
-                reviews={selectedTour.reviews}
+                reviews={displayedReviews}
                 avgRating={selectedTour.avgRating}
                 city={selectedTour.city}
                 address={selectedTour.address}

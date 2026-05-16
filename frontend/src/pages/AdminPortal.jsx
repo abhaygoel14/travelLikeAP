@@ -81,6 +81,13 @@ const createEmptyCouponForm = () => ({
   targetUserLabel: "",
 });
 
+const createEmptyReviewForm = () => ({
+  name: "",
+  rating: "5",
+  text: "",
+  avatar: "",
+});
+
 const createEmptyHomeGalleryForm = () => ({
   image: "",
   location: "",
@@ -103,6 +110,24 @@ const normalizeHomeGalleryItems = (items = []) => {
     }))
     .filter((item) => item.image);
 };
+
+const normalizeFanStoryItems = (items = {}) =>
+  Object.entries(items || {})
+    .map(([id, entry]) => ({
+      id: String(id),
+      authorUid: String(entry?.authorUid || "").trim(),
+      authorName: String(entry?.authorName || entry?.name || "Traveler").trim(),
+      authorAvatar: String(entry?.authorAvatar || entry?.avatar || "").trim(),
+      title: String(entry?.title || entry?.name || "Fan story").trim(),
+      message: String(entry?.message || entry?.text || "").trim(),
+      visible: entry?.visible === false ? false : true,
+      createdAt: String(entry?.createdAt || "").trim(),
+    }))
+    .filter((story) => story.message)
+    .sort(
+      (left, right) =>
+        Date.parse(right.createdAt || "") - Date.parse(left.createdAt || ""),
+    );
 
 const normalizeInquiryItems = (items = {}) =>
   Object.entries(items || {})
@@ -153,6 +178,9 @@ const AdminPortal = () => {
   const [homeGalleryForm, setHomeGalleryForm] = useState(() =>
     createEmptyHomeGalleryForm(),
   );
+  const [fanStoryItems, setFanStoryItems] = useState([]);
+  const [fanStoriesLoading, setFanStoriesLoading] = useState(false);
+  const [savingFanStoryId, setSavingFanStoryId] = useState(null);
   const [inquiries, setInquiries] = useState([]);
   const [inquiriesLoading, setInquiriesLoading] = useState(false);
   const [updatingInquiryId, setUpdatingInquiryId] = useState("");
@@ -443,6 +471,45 @@ const AdminPortal = () => {
 
     loadHomeGallery();
 
+    const loadFanStories = async () => {
+      if (active) {
+        setFanStoriesLoading(true);
+      }
+
+      if (!realtimeDb) {
+        if (active) {
+          setFanStoryItems([]);
+          setFanStoriesLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const snapshot = await getDbValue(
+          dbRef(realtimeDb, "siteContent/fanStories"),
+        );
+
+        if (!active) {
+          return;
+        }
+
+        setFanStoryItems(
+          snapshot.exists() ? normalizeFanStoryItems(snapshot.val()) : [],
+        );
+      } catch (error) {
+        console.warn("Unable to load fan stories:", error);
+        if (active) {
+          setFanStoryItems([]);
+        }
+      } finally {
+        if (active) {
+          setFanStoriesLoading(false);
+        }
+      }
+    };
+
+    loadFanStories();
+
     return () => {
       active = false;
     };
@@ -524,6 +591,48 @@ const AdminPortal = () => {
         couponList: nextCouponList.length
           ? nextCouponList
           : [createEmptyCouponForm()],
+      };
+    });
+  };
+
+  const handleReviewChange = (index, field, value) => {
+    setForm((prev) => {
+      const nextReviewList = Array.isArray(prev.reviewList)
+        ? [...prev.reviewList]
+        : [createEmptyReviewForm()];
+
+      const nextReview = {
+        ...(nextReviewList[index] || createEmptyReviewForm()),
+        [field]: value,
+      };
+      nextReviewList[index] = nextReview;
+
+      return {
+        ...prev,
+        reviewList: nextReviewList,
+      };
+    });
+  };
+
+  const handleAddReviewForm = () => {
+    setForm((prev) => ({
+      ...prev,
+      reviewList: [
+        ...(Array.isArray(prev.reviewList) ? prev.reviewList : []),
+        createEmptyReviewForm(),
+      ],
+    }));
+  };
+
+  const handleRemoveReviewForm = (index) => {
+    setForm((prev) => {
+      const nextReviewList = (
+        Array.isArray(prev.reviewList) ? prev.reviewList : []
+      ).filter((_, reviewIndex) => reviewIndex !== index);
+
+      return {
+        ...prev,
+        reviewList: nextReviewList,
       };
     });
   };
@@ -772,6 +881,80 @@ const AdminPortal = () => {
       });
     } finally {
       setSavingHomeGallery(false);
+    }
+  };
+
+  const handleUpdateFanStoryField = (storyId, field, value) => {
+    setFanStoryItems((prev) =>
+      prev.map((item) =>
+        item.id === storyId ? { ...item, [field]: value } : item,
+      ),
+    );
+  };
+
+  const handleSaveFanStory = async (story) => {
+    if (!story?.id || !realtimeDb) {
+      return;
+    }
+
+    setSavingFanStoryId(story.id);
+
+    try {
+      await updateDb(dbRef(realtimeDb, `siteContent/fanStories/${story.id}`), {
+        authorName: String(story.authorName || "Traveler").trim(),
+        authorAvatar: String(story.authorAvatar || "").trim(),
+        title: String(story.title || "Fan story").trim(),
+        message: String(story.message || "").trim(),
+        visible: story.visible === false ? false : true,
+      });
+
+      setFanStoryItems((prev) =>
+        prev.map((item) => (item.id === story.id ? { ...story } : item)),
+      );
+      setStatus({
+        color: "success",
+        text: "Fan story saved successfully.",
+      });
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to save that fan story right now.",
+      });
+    } finally {
+      setSavingFanStoryId(null);
+    }
+  };
+
+  const handleDeleteFanStory = async (storyId) => {
+    if (!storyId || !realtimeDb) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete this fan story from the homepage?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSavingFanStoryId(storyId);
+      await updateDb(dbRef(realtimeDb, "siteContent/fanStories"), {
+        [storyId]: null,
+      });
+      setFanStoryItems((prev) => prev.filter((item) => item.id !== storyId));
+      setStatus({
+        color: "success",
+        text: "Fan story deleted successfully.",
+      });
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to delete that fan story right now.",
+      });
+    } finally {
+      setSavingFanStoryId(null);
     }
   };
 
@@ -1129,6 +1312,13 @@ const AdminPortal = () => {
                   onClick={() => setAdminView("gallery")}
                 >
                   Homepage gallery
+                </button>
+                <button
+                  type="button"
+                  className={`admin-section-nav__btn ${adminView === "fanstories" ? "active" : ""}`}
+                  onClick={() => setAdminView("fanstories")}
+                >
+                  Fan stories
                 </button>
                 <button
                   type="button"
@@ -1860,6 +2050,134 @@ const AdminPortal = () => {
                         </Col>
                       </Row>
 
+                      <div
+                        className="admin-review-editor admin-preview-note"
+                        style={{ marginBottom: "1rem" }}
+                      >
+                        <div className="admin-review-editor__header">
+                          <h5>Tour reviews</h5>
+                          <p>
+                            Add reviewer names, ratings, and comments that will
+                            appear on the tour details page.
+                          </p>
+                        </div>
+                        {(Array.isArray(form.reviewList)
+                          ? form.reviewList
+                          : []
+                        ).map((reviewItem, reviewIndex) => (
+                          <div
+                            key={`review-item-${reviewIndex}`}
+                            className="admin-review-item"
+                            style={{
+                              border: "1px solid #d1d5db",
+                              borderRadius: 12,
+                              padding: 16,
+                              marginBottom: 12,
+                              background: "#f8fafc",
+                            }}
+                          >
+                            <Row className="g-3 align-items-end">
+                              <Col md="4">
+                                <FormGroup>
+                                  <Label>{`Reviewer name`}</Label>
+                                  <Input
+                                    value={reviewItem.name}
+                                    onChange={(event) =>
+                                      handleReviewChange(
+                                        reviewIndex,
+                                        "name",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="Guest name"
+                                  />
+                                </FormGroup>
+                              </Col>
+                              <Col md="2">
+                                <FormGroup>
+                                  <Label>{`Rating`}</Label>
+                                  <Input
+                                    type="select"
+                                    value={reviewItem.rating}
+                                    onChange={(event) =>
+                                      handleReviewChange(
+                                        reviewIndex,
+                                        "rating",
+                                        event.target.value,
+                                      )
+                                    }
+                                  >
+                                    {[5, 4, 3, 2, 1].map((ratingValue) => (
+                                      <option
+                                        key={ratingValue}
+                                        value={ratingValue}
+                                      >
+                                        {ratingValue}
+                                      </option>
+                                    ))}
+                                  </Input>
+                                </FormGroup>
+                              </Col>
+                              <Col md="4">
+                                <FormGroup>
+                                  <Label>{`Avatar URL`}</Label>
+                                  <Input
+                                    value={reviewItem.avatar}
+                                    onChange={(event) =>
+                                      handleReviewChange(
+                                        reviewIndex,
+                                        "avatar",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="Optional image URL"
+                                  />
+                                </FormGroup>
+                              </Col>
+                              <Col md="2">
+                                <Button
+                                  type="button"
+                                  color="danger"
+                                  outline
+                                  onClick={() =>
+                                    handleRemoveReviewForm(reviewIndex)
+                                  }
+                                >
+                                  Remove
+                                </Button>
+                              </Col>
+                              <Col md="12">
+                                <FormGroup>
+                                  <Label>{`Review comment`}</Label>
+                                  <Input
+                                    type="textarea"
+                                    rows="3"
+                                    value={reviewItem.text}
+                                    onChange={(event) =>
+                                      handleReviewChange(
+                                        reviewIndex,
+                                        "text",
+                                        event.target.value,
+                                      )
+                                    }
+                                    placeholder="Write a short review message"
+                                  />
+                                </FormGroup>
+                              </Col>
+                            </Row>
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          color="primary"
+                          outline
+                          onClick={handleAddReviewForm}
+                        >
+                          + Add review entry
+                        </Button>
+                      </div>
+
                       <div className="admin-form-actions">
                         <Button color="primary" type="submit" disabled={saving}>
                           {saving ? "Saving..." : "Save to Firebase"}
@@ -2167,6 +2485,153 @@ const AdminPortal = () => {
                       <p>
                         Add your first image here to show it in the homepage
                         gallery.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            </Row>
+          ) : adminView === "fanstories" ? (
+            <Row className="g-4">
+              <Col lg="4">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Fan stories</h4>
+                      <p>
+                        Manage customer stories submitted from the user
+                        dashboard and publish them to the homepage.
+                      </p>
+                    </div>
+                    <Badge color="info" pill>
+                      {fanStoryItems.length}{" "}
+                      {fanStoryItems.length === 1 ? "story" : "stories"}
+                    </Badge>
+                  </div>
+
+                  <div className="admin-preview-note">
+                    <p>
+                      Fan stories are stored at{" "}
+                      <code>siteContent/fanStories</code> and can be reviewed or
+                      hidden here.
+                    </p>
+                  </div>
+                </div>
+              </Col>
+
+              <Col lg="8">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Story manager</h4>
+                      <p>
+                        Edit story titles, author names, and messages, or hide
+                        stories from the homepage.
+                      </p>
+                    </div>
+                  </div>
+
+                  {fanStoriesLoading ? (
+                    <div className="admin-loader">
+                      <Spinner size="sm" /> Loading stories...
+                    </div>
+                  ) : fanStoryItems.length ? (
+                    <div className="admin-fanstory-list">
+                      {fanStoryItems.map((story) => (
+                        <div
+                          key={story.id}
+                          className="admin-fanstory-item"
+                          style={{ marginBottom: 16 }}
+                        >
+                          <Row className="g-3 align-items-start">
+                            <Col xs="12" md="6">
+                              <Label>Story title</Label>
+                              <Input
+                                value={story.title}
+                                onChange={(event) =>
+                                  handleUpdateFanStoryField(
+                                    story.id,
+                                    "title",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </Col>
+                            <Col xs="12" md="6">
+                              <Label>Author name</Label>
+                              <Input
+                                value={story.authorName}
+                                onChange={(event) =>
+                                  handleUpdateFanStoryField(
+                                    story.id,
+                                    "authorName",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </Col>
+                            <Col xs="12">
+                              <Label>Story message</Label>
+                              <Input
+                                type="textarea"
+                                rows="3"
+                                value={story.message}
+                                onChange={(event) =>
+                                  handleUpdateFanStoryField(
+                                    story.id,
+                                    "message",
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                            </Col>
+                            <Col xs="12" className="d-flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                color={story.visible ? "success" : "secondary"}
+                                outline
+                                onClick={() =>
+                                  handleSaveFanStory({
+                                    ...story,
+                                    visible: !story.visible,
+                                  })
+                                }
+                                disabled={savingFanStoryId === story.id}
+                              >
+                                {story.visible
+                                  ? "Hide from homepage"
+                                  : "Show on homepage"}
+                              </Button>
+                              <Button
+                                type="button"
+                                color="primary"
+                                onClick={() => handleSaveFanStory(story)}
+                                disabled={savingFanStoryId === story.id}
+                              >
+                                {savingFanStoryId === story.id
+                                  ? "Saving..."
+                                  : "Save changes"}
+                              </Button>
+                              <Button
+                                type="button"
+                                color="danger"
+                                outline
+                                disabled={savingFanStoryId === story.id}
+                                onClick={() => handleDeleteFanStory(story.id)}
+                              >
+                                Delete
+                              </Button>
+                            </Col>
+                          </Row>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="admin-preview-note">
+                      <h5>No fan stories yet</h5>
+                      <p>
+                        Once travellers share stories from their dashboard, they
+                        will appear here for review and homepage publishing.
                       </p>
                     </div>
                   )}
