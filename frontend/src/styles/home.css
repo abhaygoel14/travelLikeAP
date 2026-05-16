@@ -5,7 +5,7 @@
 .home__top-banner {
   margin-bottom: 2rem;
   padding: 1.25rem 1rem;
-  background: linear-gradient(135deg, var(--primary-color), #1e40af);
+  background: linear-gradient(135deg, rgb(37 235 176), #1e40af);
   border-radius: 24px;
   color: #fff;
 }
@@ -100,6 +100,7 @@
 
 .home__review-callout__slider .slick-list,
 .home__review-callout__slider .slick-track {
+  margin-top: 20px;
   overflow: visible;
 }
 
@@ -449,6 +450,7 @@
 .testimonial__wrapper .slick-slider,
 .testimonial__wrapper .slick-list,
 .testimonial__wrapper .slick-track {
+  margin-top: 20px;
   overflow: hidden;
 }
 
