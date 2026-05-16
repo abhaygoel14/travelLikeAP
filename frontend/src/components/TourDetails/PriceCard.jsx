@@ -847,6 +847,13 @@ export default function PriceCard({
                   price,
                 }}
                 avgRating={0}
+                isCoupleMode={isCoupleMode}
+                pricing={{
+                  offerPrice: offerPrice,
+                  serviceFee: pricingConfig.serviceFee,
+                  taxesAndFees: pricingConfig.taxesAndFees,
+                  totalPayable: totalPayable,
+                }}
                 initialBooking={{
                   guestSize: safeTravelerCount,
                   dateDisplay: dateRange,

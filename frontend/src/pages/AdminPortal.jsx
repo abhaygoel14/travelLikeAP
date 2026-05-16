@@ -12,6 +12,7 @@ import {
   Label,
   Row,
   Spinner,
+  Table,
 } from "reactstrap";
 import {
   get as getDbValue,
@@ -96,6 +97,31 @@ const createEmptyHomeGalleryForm = () => ({
   comments: "",
 });
 
+const createEmptyHomeBannerForm = () => ({
+  enabled: true,
+  topLabel: "",
+  title: "",
+  message: "",
+  ctaText: "",
+  ctaUrl: "/tours",
+  ctaEnabled: true,
+});
+
+const normalizeHomeBanner = (entry = {}) => ({
+  enabled: entry?.enabled === false ? false : true,
+  topLabel: String(entry?.topLabel || "Featured offer").trim(),
+  title: String(
+    entry?.title || "Plan your next travel memory with confidence",
+  ).trim(),
+  message: String(
+    entry?.message ||
+      "Book curated trips and exclusive routes that turn every journey into a story worth sharing.",
+  ).trim(),
+  ctaText: String(entry?.ctaText || "Explore now").trim(),
+  ctaUrl: String(entry?.ctaUrl || "/tours").trim(),
+  ctaEnabled: entry?.ctaEnabled === false ? false : true,
+});
+
 const normalizeHomeGalleryItems = (items = []) => {
   const source = Array.isArray(items) ? items : Object.values(items || {});
 
@@ -178,6 +204,12 @@ const AdminPortal = () => {
   const [homeGalleryForm, setHomeGalleryForm] = useState(() =>
     createEmptyHomeGalleryForm(),
   );
+  const [homeBanner, setHomeBanner] = useState(() => normalizeHomeBanner({}));
+  const [homeBannerForm, setHomeBannerForm] = useState(() =>
+    createEmptyHomeBannerForm(),
+  );
+  const [homeBannerLoading, setHomeBannerLoading] = useState(false);
+  const [savingHomeBanner, setSavingHomeBanner] = useState(false);
   const [fanStoryItems, setFanStoryItems] = useState([]);
   const [fanStoriesLoading, setFanStoriesLoading] = useState(false);
   const [savingFanStoryId, setSavingFanStoryId] = useState(null);
@@ -188,6 +220,8 @@ const AdminPortal = () => {
   const [inquirySearch, setInquirySearch] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [promotingEmail, setPromotingEmail] = useState("");
+  const [transactionSearch, setTransactionSearch] = useState("");
+  const [transactionUpdatingKey, setTransactionUpdatingKey] = useState("");
   const [adminView, setAdminView] = useState("tours");
 
   const isAdminUser = String(userRole || "").toLowerCase() === "admin";
@@ -206,6 +240,288 @@ const AdminPortal = () => {
       ) || null,
     [normalizedAdminEmail, portalUsers],
   );
+
+  const normalizedTransactionSearch = String(transactionSearch || "")
+    .trim()
+    .toLowerCase();
+
+  const transactionItems = useMemo(() => {
+    return portalUsers
+      .flatMap((entry) => {
+        const userReceipts = Array.isArray(entry.receipts)
+          ? entry.receipts
+          : [];
+        const upcomingCount = Array.isArray(entry.upcomingTrips)
+          ? entry.upcomingTrips.length
+          : 0;
+        const pastCount = Array.isArray(entry.pastTrips)
+          ? entry.pastTrips.length
+          : 0;
+
+        return userReceipts.map((receipt) => {
+          const receiptKey = String(
+            receipt.txnid || receipt.bookingId || "",
+          ).trim();
+          const paymentState = String(
+            receipt.paymentStatus || receipt.status || "pending",
+          )
+            .trim()
+            .toLowerCase();
+          const statusLabel = getTransactionStatusLabel(
+            receipt.paymentStatus || receipt.status,
+          );
+          const hasUpcomingTrip =
+            Array.isArray(entry.upcomingTrips) &&
+            entry.upcomingTrips.some(
+              (trip) =>
+                String(trip.bookingId || trip.txnid || "").trim() ===
+                  receiptKey ||
+                String(trip.bookingId || "").trim() === receiptKey,
+            );
+
+          return {
+            userUid: entry.uid,
+            userName: entry.displayName,
+            userEmail: entry.email,
+            userRole: entry.role,
+            upcomingCount,
+            pastCount,
+            receiptKey,
+            tourName: receipt.tourName || receipt.productinfo || "Trip receipt",
+            bookAt: receipt.bookAt || "",
+            amount: Number(receipt.amount) || 0,
+            paymentState,
+            statusLabel,
+            hasUpcomingTrip,
+            originalReceipt: receipt,
+          };
+        });
+      })
+      .filter((item) => {
+        if (!normalizedTransactionSearch) {
+          return true;
+        }
+
+        const haystack = [
+          item.userName,
+          item.userEmail,
+          item.receiptKey,
+          item.tourName,
+          item.statusLabel,
+        ]
+          .map((value) => String(value || "").toLowerCase())
+          .join(" ");
+
+        return haystack.includes(normalizedTransactionSearch);
+      })
+      .sort((left, right) => {
+        const leftDate = Date.parse(left.bookAt || "");
+        const rightDate = Date.parse(right.bookAt || "");
+        return Number(rightDate || 0) - Number(leftDate || 0);
+      });
+  }, [portalUsers, normalizedTransactionSearch]);
+
+  function getTransactionStatusLabel(status) {
+    const normalized = String(status || "")
+      .trim()
+      .toLowerCase();
+    if (normalized === "success" || normalized === "paid") {
+      return "Success";
+    }
+    if (normalized === "failure" || normalized === "failed") {
+      return "Failed";
+    }
+    if (normalized === "pending") {
+      return "Pending";
+    }
+    return String(status || "Pending");
+  }
+
+  const handleUpdateTransactionStatus = async (
+    userUid,
+    receiptId,
+    nextPaymentStatus,
+  ) => {
+    if (!userUid || !receiptId) {
+      return;
+    }
+
+    const userEntry = portalUsers.find((entry) => entry.uid === userUid);
+    if (!userEntry) {
+      return;
+    }
+
+    const safePaymentStatus = String(nextPaymentStatus || "pending")
+      .trim()
+      .toLowerCase();
+    const nextStatusLabel = getTransactionStatusLabel(safePaymentStatus);
+    const nextReceipts = Array.isArray(userEntry.receipts)
+      ? userEntry.receipts.map((receipt) =>
+          String(receipt.txnid || receipt.bookingId || "") === receiptId
+            ? {
+                ...receipt,
+                paymentStatus: safePaymentStatus,
+                status: nextStatusLabel,
+                updatedAt: new Date().toISOString(),
+              }
+            : receipt,
+        )
+      : [];
+
+    const bookingKey = receiptId;
+    const nextUpcomingTrips = Array.isArray(userEntry.upcomingTrips)
+      ? [...userEntry.upcomingTrips]
+      : [];
+    const nextPastTrips = Array.isArray(userEntry.pastTrips)
+      ? [...userEntry.pastTrips]
+      : [];
+
+    const matchingTripIndex = nextUpcomingTrips.findIndex(
+      (trip) =>
+        String(trip.bookingId || trip.txnid || "") === bookingKey ||
+        String(trip.bookingId || "").trim() === bookingKey,
+    );
+
+    const matchingReceipt = nextReceipts.find(
+      (receipt) =>
+        String(receipt.txnid || receipt.bookingId || "") === bookingKey,
+    );
+
+    if (safePaymentStatus === "success" && matchingReceipt) {
+      const nextTrip = {
+        title:
+          matchingReceipt.tourName ||
+          matchingReceipt.productinfo ||
+          "Upcoming trip",
+        date: matchingReceipt.bookAt || "TBD",
+        status: "Confirmed",
+        budget: Number(matchingReceipt.amount) || 0,
+        bookingId: bookingKey,
+        route: matchingReceipt.route || "/tours",
+      };
+
+      if (matchingTripIndex === -1) {
+        nextUpcomingTrips.unshift(nextTrip);
+      } else {
+        nextUpcomingTrips[matchingTripIndex] = {
+          ...nextUpcomingTrips[matchingTripIndex],
+          ...nextTrip,
+        };
+      }
+    }
+
+    if (safePaymentStatus !== "success" && matchingTripIndex > -1) {
+      nextUpcomingTrips.splice(matchingTripIndex, 1);
+    }
+
+    setTransactionUpdatingKey(`${userUid}:${receiptId}`);
+
+    try {
+      await updateDb(dbRef(realtimeDb, `users/${userUid}`), {
+        receipts: nextReceipts,
+        upcomingTrips: nextUpcomingTrips,
+        pastTrips: nextPastTrips,
+      });
+
+      setPortalUsers((prev) =>
+        prev.map((entry) =>
+          entry.uid === userUid
+            ? {
+                ...entry,
+                receipts: nextReceipts,
+                upcomingTrips: nextUpcomingTrips,
+                pastTrips: nextPastTrips,
+              }
+            : entry,
+        ),
+      );
+
+      setStatus({
+        color: "success",
+        text: `Updated payment status for ${matchingReceipt?.tourName || receiptId}.`,
+      });
+    } catch (error) {
+      console.error("Unable to update transaction status:", error);
+      setStatus({
+        color: "danger",
+        text: "Unable to update transaction status right now.",
+      });
+    } finally {
+      setTransactionUpdatingKey("");
+    }
+  };
+
+  const handleMoveTripToPast = async (userUid, trip) => {
+    if (!userUid || !trip) {
+      return;
+    }
+
+    const userEntry = portalUsers.find((entry) => entry.uid === userUid);
+    if (!userEntry) {
+      return;
+    }
+
+    const bookingKey = String(trip.bookingId || trip.txnid || "").trim();
+    const nextUpcomingTrips = Array.isArray(userEntry.upcomingTrips)
+      ? userEntry.upcomingTrips.filter(
+          (current) =>
+            String(current.bookingId || current.txnid || "").trim() !==
+            bookingKey,
+        )
+      : [];
+
+    const nextPastTrips = Array.isArray(userEntry.pastTrips)
+      ? [...userEntry.pastTrips]
+      : [];
+
+    const alreadyMoved = nextPastTrips.some(
+      (current) =>
+        String(current.bookingId || current.txnid || "").trim() === bookingKey,
+    );
+
+    if (!alreadyMoved) {
+      nextPastTrips.unshift({
+        ...trip,
+        status: "Completed",
+        bookingId: bookingKey || trip.bookingId || trip.txnid,
+      });
+    }
+
+    setTransactionUpdatingKey(`${userUid}:${bookingKey}:complete`);
+
+    try {
+      await updateDb(dbRef(realtimeDb, `users/${userUid}`), {
+        upcomingTrips: nextUpcomingTrips,
+        pastTrips: nextPastTrips,
+      });
+
+      setPortalUsers((prev) =>
+        prev.map((entry) =>
+          entry.uid === userUid
+            ? {
+                ...entry,
+                upcomingTrips: nextUpcomingTrips,
+                pastTrips: nextPastTrips,
+              }
+            : entry,
+        ),
+      );
+
+      setStatus({
+        color: "success",
+        text: `Moved ${trip.title || "trip"} to past trips.`,
+      });
+    } catch (error) {
+      console.error("Unable to move trip to past trips:", error);
+      setStatus({
+        color: "danger",
+        text: "Unable to update trip completion status right now.",
+      });
+    } finally {
+      setTransactionUpdatingKey("");
+    }
+  };
+
   const currentPreviewTour = useMemo(() => formStateToTour(form), [form]);
   const normalizedInquirySearch = String(inquirySearch || "")
     .trim()
@@ -323,6 +639,11 @@ const AdminPortal = () => {
               email,
               role,
               label: email ? `${displayName} (${email})` : displayName,
+              receipts: Array.isArray(entry?.receipts) ? entry.receipts : [],
+              upcomingTrips: Array.isArray(entry?.upcomingTrips)
+                ? entry.upcomingTrips
+                : [],
+              pastTrips: Array.isArray(entry?.pastTrips) ? entry.pastTrips : [],
             };
           })
           .sort((left, right) => {
@@ -470,6 +791,48 @@ const AdminPortal = () => {
     };
 
     loadHomeGallery();
+
+    const loadHomeBanner = async () => {
+      if (active) {
+        setHomeBannerLoading(true);
+      }
+
+      if (!realtimeDb) {
+        if (active) {
+          setHomeBanner(normalizeHomeBanner({}));
+          setHomeBannerLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const snapshot = await getDbValue(
+          dbRef(realtimeDb, "siteContent/homeBanner"),
+        );
+
+        if (!active) {
+          return;
+        }
+
+        const loadedBanner = snapshot.exists()
+          ? normalizeHomeBanner(snapshot.val())
+          : normalizeHomeBanner({});
+
+        setHomeBanner(loadedBanner);
+        setHomeBannerForm(loadedBanner);
+      } catch (error) {
+        console.warn("Unable to load homepage banner:", error);
+        if (active) {
+          setHomeBanner(normalizeHomeBanner({}));
+        }
+      } finally {
+        if (active) {
+          setHomeBannerLoading(false);
+        }
+      }
+    };
+
+    loadHomeBanner();
 
     const loadFanStories = async () => {
       if (active) {
@@ -637,6 +1000,56 @@ const AdminPortal = () => {
     });
   };
 
+  const resizeImageFile = async (
+    file,
+    maxWidth = 1600,
+    maxHeight = 1200,
+    quality = 0.85,
+  ) => {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      return file;
+    }
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const image = await new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const ratio = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+
+    if (ratio === 1) {
+      return file;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * ratio));
+    canvas.height = Math.max(1, Math.round(image.height * ratio));
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const outputType =
+      /png|webp|jpeg/.test(file.type) && file.type ? file.type : "image/jpeg";
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob((result) => resolve(result), outputType, quality),
+    );
+
+    if (!blob) {
+      throw new Error("Unable to resize the selected image.");
+    }
+
+    return new File([blob], file.name, { type: blob.type });
+  };
+
   const uploadImageToFirebase = async (file, folder) => {
     if (!file) {
       return "";
@@ -650,8 +1063,10 @@ const AdminPortal = () => {
       throw new Error("Please choose a valid image file.");
     }
 
-    if (file.size > MAX_TOUR_IMAGE_SIZE) {
-      throw new Error("Please upload images smaller than 5MB.");
+    const resizedFile = await resizeImageFile(file);
+
+    if (resizedFile.size > MAX_TOUR_IMAGE_SIZE) {
+      throw new Error("Please upload images smaller than 5MB after resizing.");
     }
 
     const safeTitle =
@@ -670,7 +1085,7 @@ const AdminPortal = () => {
       `tours/${user?.uid || "admin"}/${folder}/${safeTitle}-${Date.now()}.${extension}`,
     );
 
-    await uploadBytes(imageRef, file);
+    await uploadBytes(imageRef, resizedFile);
     return getDownloadURL(imageRef);
   };
 
@@ -778,6 +1193,77 @@ const AdminPortal = () => {
       color: "success",
       text: successText,
     });
+  };
+
+  const handleHomeBannerFieldChange = ({ target }) => {
+    const { name, value, type, checked } = target;
+
+    setHomeBannerForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const syncHomeBanner = async (nextBanner, successText) => {
+    if (!realtimeDb) {
+      throw new Error("Firebase is not configured for the homepage banner.");
+    }
+
+    const normalizedBanner = normalizeHomeBanner(nextBanner);
+
+    await updateDb(dbRef(realtimeDb, "siteContent"), {
+      homeBanner: normalizedBanner,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setHomeBanner(normalizedBanner);
+    setStatus({
+      color: "success",
+      text: successText,
+    });
+  };
+
+  const handleSaveHomeBanner = async (event) => {
+    event.preventDefault();
+
+    if (!canOpenPortal) {
+      setStatus({
+        color: "warning",
+        text: "Only admins can manage the homepage banner.",
+      });
+      return;
+    }
+
+    const nextBanner = normalizeHomeBanner(homeBannerForm);
+
+    if (!nextBanner.title || !nextBanner.message) {
+      setStatus({
+        color: "warning",
+        text: "Please provide a banner title and message.",
+      });
+      return;
+    }
+
+    if (nextBanner.ctaEnabled && !nextBanner.ctaText) {
+      setStatus({
+        color: "warning",
+        text: "Please provide a CTA label when the hero CTA is enabled.",
+      });
+      return;
+    }
+
+    try {
+      setSavingHomeBanner(true);
+      await syncHomeBanner(nextBanner, "Homepage banner saved successfully.");
+      setHomeBannerForm(createEmptyHomeBannerForm());
+    } catch (error) {
+      setStatus({
+        color: "danger",
+        text: error?.message || "Unable to save the homepage banner right now.",
+      });
+    } finally {
+      setSavingHomeBanner(false);
+    }
   };
 
   const handleHomeGalleryImageUpload = async (event) => {
@@ -1315,6 +1801,13 @@ const AdminPortal = () => {
                 </button>
                 <button
                   type="button"
+                  className={`admin-section-nav__btn ${adminView === "homebanner" ? "active" : ""}`}
+                  onClick={() => setAdminView("homebanner")}
+                >
+                  Hero banner
+                </button>
+                <button
+                  type="button"
                   className={`admin-section-nav__btn ${adminView === "fanstories" ? "active" : ""}`}
                   onClick={() => setAdminView("fanstories")}
                 >
@@ -1326,6 +1819,13 @@ const AdminPortal = () => {
                   onClick={() => setAdminView("users")}
                 >
                   Users & roles
+                </button>
+                <button
+                  type="button"
+                  className={`admin-section-nav__btn ${adminView === "transactions" ? "active" : ""}`}
+                  onClick={() => setAdminView("transactions")}
+                >
+                  Transactions
                 </button>
                 <button
                   type="button"
@@ -2491,6 +2991,163 @@ const AdminPortal = () => {
                 </div>
               </Col>
             </Row>
+          ) : adminView === "homebanner" ? (
+            <Row className="g-4">
+              <Col lg="12">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Homepage hero banner</h4>
+                      <p>
+                        Configure the top homepage promotion text, CTA label,
+                        and link visitors see first.
+                      </p>
+                    </div>
+                    <Badge color="info" pill>
+                      {homeBannerLoading ? "Loading..." : "Live banner"}
+                    </Badge>
+                  </div>
+
+                  <Form onSubmit={handleSaveHomeBanner}>
+                    <Row className="g-3">
+                      <Col md="6">
+                        <FormGroup>
+                          <Label>Banner label</Label>
+                          <Input
+                            name="topLabel"
+                            value={homeBannerForm.topLabel}
+                            onChange={handleHomeBannerFieldChange}
+                            placeholder="Featured offer"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col md="6">
+                        <FormGroup>
+                          <Label>CTA text</Label>
+                          <Input
+                            name="ctaText"
+                            value={homeBannerForm.ctaText}
+                            onChange={handleHomeBannerFieldChange}
+                            placeholder="Explore now"
+                            disabled={!homeBannerForm.ctaEnabled}
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col md="6">
+                        <FormGroup check>
+                          <Input
+                            id="homeBannerEnabled"
+                            name="enabled"
+                            type="checkbox"
+                            checked={homeBannerForm.enabled}
+                            onChange={handleHomeBannerFieldChange}
+                          />
+                          <Label check for="homeBannerEnabled">
+                            Show hero banner on homepage
+                          </Label>
+                        </FormGroup>
+                      </Col>
+                      <Col md="6">
+                        <FormGroup check>
+                          <Input
+                            id="homeBannerCtaEnabled"
+                            name="ctaEnabled"
+                            type="checkbox"
+                            checked={homeBannerForm.ctaEnabled}
+                            onChange={handleHomeBannerFieldChange}
+                          />
+                          <Label check for="homeBannerCtaEnabled">
+                            Show CTA button on hero banner
+                          </Label>
+                        </FormGroup>
+                      </Col>
+                      <Col md="12">
+                        <FormGroup>
+                          <Label>Headline</Label>
+                          <Input
+                            name="title"
+                            value={homeBannerForm.title}
+                            onChange={handleHomeBannerFieldChange}
+                            placeholder="Your headline text"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col md="12">
+                        <FormGroup>
+                          <Label>Message</Label>
+                          <Input
+                            type="textarea"
+                            rows="3"
+                            name="message"
+                            value={homeBannerForm.message}
+                            onChange={handleHomeBannerFieldChange}
+                            placeholder="A short message for visitors"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col md="12">
+                        <FormGroup>
+                          <Label>CTA destination URL</Label>
+                          <Input
+                            name="ctaUrl"
+                            value={homeBannerForm.ctaUrl}
+                            onChange={handleHomeBannerFieldChange}
+                            placeholder="/tours"
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col md="12" className="d-flex gap-2 flex-wrap">
+                        <Button
+                          type="submit"
+                          color="primary"
+                          disabled={savingHomeBanner}
+                        >
+                          {savingHomeBanner ? "Saving..." : "Save banner"}
+                        </Button>
+                        <Button
+                          type="button"
+                          color="secondary"
+                          outline
+                          onClick={() =>
+                            setHomeBannerForm(normalizeHomeBanner(homeBanner))
+                          }
+                        >
+                          Reset to live banner
+                        </Button>
+                      </Col>
+                    </Row>
+                  </Form>
+                </div>
+
+                <div className="admin-panel-card mt-4">
+                  <div className="admin-panel-card__header">
+                    <div>
+                      <h4>Banner preview</h4>
+                      <p>The homepage hero banner that visitors will see.</p>
+                    </div>
+                  </div>
+                  <div className="admin-banner-preview">
+                    <div className="admin-banner-preview__label">
+                      {homeBanner.topLabel}
+                    </div>
+                    <h4>{homeBanner.title}</h4>
+                    <p>{homeBanner.message}</p>
+                    {homeBanner.ctaEnabled !== false && homeBanner.ctaText ? (
+                      <a
+                        href={homeBanner.ctaUrl || "/tours"}
+                        className="admin-banner-preview__cta"
+                      >
+                        {homeBanner.ctaText}
+                      </a>
+                    ) : (
+                      <div className="admin-banner-preview__cta admin-banner-preview__cta--disabled">
+                        CTA disabled
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Col>
+            </Row>
           ) : adminView === "fanstories" ? (
             <Row className="g-4">
               <Col lg="4">
@@ -2632,6 +3289,199 @@ const AdminPortal = () => {
                       <p>
                         Once travellers share stories from their dashboard, they
                         will appear here for review and homepage publishing.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Col>
+            </Row>
+          ) : adminView === "transactions" ? (
+            <Row className="g-4">
+              <Col lg="12">
+                <div className="admin-panel-card">
+                  <div className="admin-panel-card__header admin-panel-card__header--compact">
+                    <div>
+                      <h4>Transaction history</h4>
+                      <p>
+                        Review trip receipts, update payment status, and mark
+                        completed trips for users.
+                      </p>
+                    </div>
+                    <FormGroup className="w-100" style={{ maxWidth: 360 }}>
+                      <Label
+                        for="transactionSearch"
+                        className="visually-hidden"
+                      >
+                        Search transactions
+                      </Label>
+                      <Input
+                        id="transactionSearch"
+                        type="search"
+                        placeholder="Search by user, transaction, tour or status"
+                        value={transactionSearch}
+                        onChange={(event) =>
+                          setTransactionSearch(event.target.value)
+                        }
+                      />
+                    </FormGroup>
+                  </div>
+
+                  {transactionItems.length ? (
+                    <div style={{ overflowX: "auto" }}>
+                      <Table responsive bordered hover size="sm">
+                        <thead>
+                          <tr>
+                            <th>User</th>
+                            <th>Transaction</th>
+                            <th>Tour</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {transactionItems.map((item) => {
+                            const actionKey = `${item.userUid}:${item.receiptKey}`;
+
+                            return (
+                              <tr
+                                key={`transaction-row-${item.userUid}-${item.receiptKey}`}
+                              >
+                                <td>
+                                  <strong>{item.userName || "Traveler"}</strong>
+                                  <br />
+                                  <small>{item.userEmail || "No email"}</small>
+                                </td>
+                                <td>
+                                  <div>{item.receiptKey || "N/A"}</div>
+                                  <small>
+                                    {item.userRole === "admin"
+                                      ? "Admin"
+                                      : "User"}
+                                  </small>
+                                </td>
+                                <td>{item.tourName}</td>
+                                <td>{item.bookAt || "No date"}</td>
+                                <td>{formatPrice(item.amount)}</td>
+                                <td>
+                                  <Badge
+                                    color={
+                                      item.paymentState === "failure"
+                                        ? "danger"
+                                        : item.paymentState === "pending"
+                                          ? "warning"
+                                          : "success"
+                                    }
+                                    pill
+                                  >
+                                    {item.statusLabel}
+                                  </Badge>
+                                </td>
+                                <td>
+                                  <div
+                                    className="admin-user-actions"
+                                    style={{ gap: "0.35rem", flexWrap: "wrap" }}
+                                  >
+                                    <Button
+                                      size="sm"
+                                      color="success"
+                                      outline
+                                      disabled={
+                                        transactionUpdatingKey === actionKey
+                                      }
+                                      onClick={() =>
+                                        handleUpdateTransactionStatus(
+                                          item.userUid,
+                                          item.receiptKey,
+                                          "success",
+                                        )
+                                      }
+                                    >
+                                      Paid
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      color="warning"
+                                      outline
+                                      disabled={
+                                        transactionUpdatingKey === actionKey
+                                      }
+                                      onClick={() =>
+                                        handleUpdateTransactionStatus(
+                                          item.userUid,
+                                          item.receiptKey,
+                                          "pending",
+                                        )
+                                      }
+                                    >
+                                      Pending
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      color="danger"
+                                      outline
+                                      disabled={
+                                        transactionUpdatingKey === actionKey
+                                      }
+                                      onClick={() =>
+                                        handleUpdateTransactionStatus(
+                                          item.userUid,
+                                          item.receiptKey,
+                                          "failure",
+                                        )
+                                      }
+                                    >
+                                      Failed
+                                    </Button>
+                                    {item.paymentState === "success" &&
+                                    item.hasUpcomingTrip ? (
+                                      <Button
+                                        size="sm"
+                                        color="primary"
+                                        outline
+                                        disabled={
+                                          transactionUpdatingKey ===
+                                          `${actionKey}:complete`
+                                        }
+                                        onClick={() => {
+                                          const matchingTrip = portalUsers
+                                            .find(
+                                              (user) =>
+                                                user.uid === item.userUid,
+                                            )
+                                            ?.upcomingTrips?.find(
+                                              (trip) =>
+                                                String(
+                                                  trip.bookingId ||
+                                                    trip.txnid ||
+                                                    "",
+                                                ).trim() === item.receiptKey,
+                                            );
+                                          handleMoveTripToPast(
+                                            item.userUid,
+                                            matchingTrip ||
+                                              item.originalReceipt,
+                                          );
+                                        }}
+                                      >
+                                        Complete
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="admin-preview-note">
+                      <h5>No transactions found</h5>
+                      <p>
+                        Try a broader search or wait for users to submit new
+                        bookings.
                       </p>
                     </div>
                   )}

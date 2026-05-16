@@ -1,15 +1,22 @@
 import React, { useState, useContext, useEffect } from "react";
 import "./booking.css";
-import { Form, FormGroup, ListGroupItem, ListGroup, Button } from "reactstrap";
+import { Form, FormGroup, Button } from "reactstrap";
 import { get, ref, update } from "firebase/database";
 import { AuthContext } from "../../context/AuthContext";
 import { formatPrice } from "../../utils/tourSchema";
 import { auth, realtimeDb } from "../../utils/firebaseConfig";
 
-const Booking = ({ tour, avgRating, initialBooking = {} }) => {
-  const { price, reviews, title } = tour;
+const Booking = ({
+  tour,
+  avgRating,
+  isCoupleMode = false,
+  initialBooking = {},
+  pricing = {},
+}) => {
+  const { price, title } = tour;
 
   const { user } = useContext(AuthContext);
+  const today = new Date().toISOString().slice(0, 10);
 
   const [booking, setBooking] = useState({
     userId: user?.uid || user?._id || "",
@@ -18,10 +25,11 @@ const Booking = ({ tour, avgRating, initialBooking = {} }) => {
     fullName: initialBooking.fullName || "",
     phone: "",
     guestSize: initialBooking.guestSize || 1,
-    bookAt: initialBooking.bookAt || "",
+    bookAt: initialBooking.bookAt || today,
     dateDisplay: initialBooking.dateDisplay || "",
   });
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [errors, setErrors] = useState({ fullName: "", phone: "" });
 
   const PAYU_MERCHANT_KEY = process.env.REACT_APP_PAYU_MERCHANT_KEY || "";
   const PAYU_MERCHANT_SALT = process.env.REACT_APP_PAYU_MERCHANT_SALT || "";
@@ -37,13 +45,39 @@ const Booking = ({ tour, avgRating, initialBooking = {} }) => {
     }
   }, [PAYU_MERCHANT_KEY, PAYU_MERCHANT_SALT, PAYU_PAYMENT_URL]);
 
+  const indianPhonePattern = /^(?:\+91[\s-]?|0)?[6-9]\d{9}$/;
+
   const handleChange = (e) => {
-    setBooking((prev) => ({ ...prev, [e.target.id]: e.target.value }));
+    const { id, value } = e.target;
+    setBooking((prev) => ({ ...prev, [id]: value }));
+
+    if (id === "phone") {
+      const cleaned = String(value || "").trim();
+      if (!cleaned) {
+        setErrors((prev) => ({ ...prev, phone: "Mobile number is required." }));
+      } else if (!indianPhonePattern.test(cleaned)) {
+        setErrors((prev) => ({
+          ...prev,
+          phone: "Enter a valid 10-digit Indian mobile number.",
+        }));
+      } else {
+        setErrors((prev) => ({ ...prev, phone: "" }));
+      }
+    }
+
+    if (id === "fullName") {
+      setErrors((prev) => ({
+        ...prev,
+        fullName: String(value || "").trim() ? "" : "Full Name is required.",
+      }));
+    }
   };
 
-  const serviceFee = 10;
-  const totalAmount =
-    Number(price) * Number(booking.guestSize) + Number(serviceFee);
+  const serviceFee = Number(pricing.serviceFee ?? 10);
+  const offerPrice = Number(pricing.offerPrice || price * booking.guestSize);
+  const taxesAndFees = Number(pricing.taxesAndFees ?? serviceFee);
+  const totalAmount = Number(pricing.totalPayable ?? offerPrice + taxesAndFees);
+  const guestCount = Number(booking.guestSize || 1);
 
   useEffect(() => {
     setBooking((prev) => ({
@@ -144,8 +178,31 @@ const Booking = ({ tour, avgRating, initialBooking = {} }) => {
       return alert("Please sign in before booking.");
     }
 
-    if (!booking.fullName || !booking.phone || !booking.bookAt) {
-      return alert("Please complete all booking details.");
+    const fullName = String(booking.fullName || "").trim();
+    const phone = String(booking.phone || "").trim();
+    const nextErrors = {};
+
+    if (!fullName) {
+      nextErrors.fullName = "Full Name is required.";
+    }
+
+    if (!phone) {
+      nextErrors.phone = "Mobile number is required.";
+    } else if (!indianPhonePattern.test(phone)) {
+      nextErrors.phone = "Enter a valid 10-digit Indian mobile number.";
+    }
+
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    if (!booking.bookAt) {
+      booking.bookAt = today;
+    }
+
+    if (!booking.guestSize || Number(booking.guestSize) < 1) {
+      booking.guestSize = 1;
     }
 
     if (!PAYU_MERCHANT_KEY || !PAYU_MERCHANT_SALT) {
@@ -159,18 +216,19 @@ const Booking = ({ tour, avgRating, initialBooking = {} }) => {
     const txnid = `txn_${Date.now()}`;
     const amount = Number(totalAmount).toFixed(2);
     const productinfo = `Booking for ${title}`;
-    const firstname = booking.fullName;
+    const firstname = fullName;
     const email = user.email || booking.userEmail || "guest@example.com";
-    const phone = booking.phone;
+    const phoneNumber = phone;
     const tourId = tour._id || tour.id || "";
     const receiptData = {
       txnid,
+      bookingId: txnid,
       userId: auth?.currentUser?.uid || user?.uid || user?._id || "",
       amount,
       productinfo,
       firstname,
       email,
-      phone,
+      phone: phoneNumber,
       tourName: title,
       tourId,
       bookAt: booking.bookAt,
@@ -219,7 +277,7 @@ const Booking = ({ tour, avgRating, initialBooking = {} }) => {
         productinfo,
         firstname,
         email,
-        phone,
+        phone: phoneNumber,
         surl,
         furl,
         hash,
@@ -241,83 +299,93 @@ const Booking = ({ tour, avgRating, initialBooking = {} }) => {
 
   return (
     <div className="booking">
-      <div className="booking__top d-flex align-items-center justify-content-between">
-        <h3>
-          {formatPrice(price)} <span>/per person</span>
-        </h3>
-        <span className="tour__rating d-flex align-items-center">
-          <i
-            class="ri-star-fill"
-            style={{ color: "var(--secondary-color)" }}
-          ></i>
-          {avgRating === 0 ? null : avgRating} ({reviews?.length})
-        </span>
+      <div className="booking__header">
+        <div>
+          <h3>
+            {formatPrice(price)} <span>/ person</span>
+          </h3>
+          <p className="booking__header-meta">
+            Pay securely with PayU and confirm your booking instantly.
+          </p>
+        </div>
+        <div className="booking__header-badge">Book Now</div>
       </div>
 
-      {/* =============== BOOKING FORM START ============== */}
-      <div className="booking__form">
-        <h5>Information</h5>
-        <Form className="booking__info-form" onSubmit={handleClick}>
-          <FormGroup>
-            <input
-              type="text"
-              placeholder="Full Name"
-              id="fullName"
-              required
-              onChange={handleChange}
-            />
-          </FormGroup>
-          <FormGroup>
-            <input
-              type="tel"
-              placeholder="Phone"
-              id="phone"
-              required
-              onChange={handleChange}
-            />
-          </FormGroup>
-          <FormGroup className="d-flex align-items-center gap-3">
-            <input
-              type="date"
-              placeholder=""
-              id="bookAt"
-              required
-              onChange={handleChange}
-            />
-            <input
-              type="number"
-              placeholder="Guest"
-              id="guestSize"
-              required
-              onChange={handleChange}
-            />
-          </FormGroup>
-        </Form>
+      <div className="booking__panel">
+        <div className="booking__panel-left">
+          <div className="booking__section">
+            <div className="booking__section-title">Traveller details</div>
+            <Form className="booking__info-form" onSubmit={handleClick}>
+              <FormGroup>
+                <input
+                  type="text"
+                  placeholder="Full Name (as Aadhaar Name)"
+                  id="fullName"
+                  value={booking.fullName}
+                  onChange={handleChange}
+                  className={errors.fullName ? "error" : ""}
+                />
+                {errors.fullName ? (
+                  <div className="booking__field-error">{errors.fullName}</div>
+                ) : null}
+              </FormGroup>
+              <FormGroup>
+                <input
+                  type="tel"
+                  placeholder="Mobile Number"
+                  id="phone"
+                  value={booking.phone}
+                  onChange={handleChange}
+                  className={errors.phone ? "error" : ""}
+                />
+                {errors.phone ? (
+                  <div className="booking__field-error">{errors.phone}</div>
+                ) : null}
+              </FormGroup>
+              <div className="booking__summary">
+                <p>
+                  <strong>Payment date:</strong>{" "}
+                  {new Date(booking.bookAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+                <p>
+                  <strong>{isCoupleMode ? "Traveller:" : "Travellers:"}</strong>{" "}
+                  {isCoupleMode ? "1 (x Couple)" : guestCount}
+                </p>
+              </div>
+            </Form>
+          </div>
+        </div>
+
+        <div className="booking__panel-right">
+          <div className="booking__price-card">
+            <div className="booking__price-row">
+              <span>Offer price</span>
+              <strong>{formatPrice(pricing.offerPrice || price)}</strong>
+            </div>
+            <div className="booking__price-row">
+              <span>Taxes & service fees</span>
+              <strong>{formatPrice(taxesAndFees)}</strong>
+            </div>
+            <div className="booking__price-divider" />
+            <div className="booking__price-total">
+              <span>Total payable</span>
+              <strong>{formatPrice(totalAmount)}</strong>
+            </div>
+            <p className="booking__price-note">
+              You will be redirected to PayU to complete payment.
+            </p>
+          </div>
+        </div>
       </div>
-      {/* =============== BOOKING FORM END ================ */}
 
-      {/* =============== BOOKING BOTTOM ================ */}
-      <div className="booking__bottom">
-        <ListGroup>
-          <ListGroupItem className="border-0 px-0">
-            <h5 className="d-flex align-items-center gap-1">
-              {formatPrice(price)} <i class="ri-close-line"></i> 1 person
-            </h5>
-            <span>{formatPrice(price)}</span>
-          </ListGroupItem>
-          <ListGroupItem className="border-0 px-0">
-            <h5>Service charge</h5>
-            <span>{formatPrice(serviceFee)}</span>
-          </ListGroupItem>
-          <ListGroupItem className="border-0 px-0 total">
-            <h5>Total</h5>
-            <span>{formatPrice(totalAmount)}</span>
-          </ListGroupItem>
-        </ListGroup>
-
+      <div className="booking__actions">
         <Button
           type="button"
-          className="btn primary__btn w-100 mt-4"
+          className="btn primary__btn w-100"
           onClick={handleClick}
           disabled={paymentLoading}
         >

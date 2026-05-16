@@ -6,12 +6,34 @@
   position: relative;
   overflow: hidden;
   background: #e2e8f0;
+  aspect-ratio: 16 / 9;
+  min-height: 320px;
+  border-radius: 12px;
 }
 .td-gallery-main img {
   width: 100%;
-  height: 420px;
+  height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  object-position: center;
+  border-radius: 12px;
+}
+.td-gallery-side {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+.td-gallery-tile {
+  overflow: hidden;
+  border-radius: 10px;
+  aspect-ratio: 4 / 3;
+  min-height: 72px;
+}
+.td-gallery-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 .td-gallery-main img.is-loading,
 .td-gallery-tile img.is-loading {
@@ -543,15 +565,17 @@
   justify-content: center;
   z-index: 2000;
   padding: 1rem;
+  overflow-y: auto;
 }
 .td-modal {
-  width: 900px;
-  max-width: 95%;
-  height: 560px;
+  width: min(900px, 100%);
+  max-width: 100%;
+  max-height: calc(100vh - 2rem);
   background: var(--surface);
   display: flex;
-  border-radius: 8px;
+  border-radius: 18px;
   overflow: hidden;
+  box-shadow: 0 32px 60px rgba(15, 23, 42, 0.18);
 }
 .td-modal-left {
   flex: 1;
@@ -566,15 +590,31 @@
   padding: 1.25rem;
   position: relative;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
 }
 .td-modal-close {
   position: absolute;
-  right: 10px;
-  top: 10px;
+  right: 14px;
+  top: 14px;
+  width: 2.7rem;
+  height: 2.7rem;
   border: none;
-  background: transparent;
-  font-size: 1.25rem;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 50%;
+  font-size: 1.05rem;
   cursor: pointer;
+  color: var(--text-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+.td-modal-close:hover {
+  transform: scale(1.05);
+  background: rgba(15, 23, 42, 0.12);
 }
 .td-inquiry-form input,
 .td-inquiry-form textarea {

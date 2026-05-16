@@ -187,9 +187,11 @@
     flex-wrap: wrap;
   }
 
-  .search__bar form .form__group {
-    width: 48%;
-    flex: 0 0 48%;
+  .search__bar form .form__group,
+  .search__bar form .search__icon {
+    width: 100%;
+    flex: 0 0 100%;
+    max-width: 100%;
   }
 
   .form__group-fast {

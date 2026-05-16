@@ -636,6 +636,7 @@ const normalizeProfile = (user = {}) => {
         ? user.reviews
         : defaultReviews,
     receipts: Array.isArray(user.receipts) ? user.receipts : [],
+    pastTrips: Array.isArray(user.pastTrips) ? user.pastTrips : [],
     wishlist: Array.isArray(user.wishlist) ? user.wishlist : [],
   };
 };
@@ -870,7 +871,12 @@ const UserDashboard = () => {
     () => (profile.upcomingTrips || []).slice(0, 4),
     [profile.upcomingTrips],
   );
+  const pastTrips = useMemo(
+    () => (profile.pastTrips || []).slice(0, 4),
+    [profile.pastTrips],
+  );
   const hasUpcomingBookings = sideTrips.length > 0;
+  const hasPastTrips = pastTrips.length > 0;
   const phoneNumberError =
     form.phoneNumber && form.phoneNumber.length !== 10
       ? "Phone number must be exactly 10 digits."
@@ -4036,6 +4042,126 @@ const UserDashboard = () => {
                             </Paper>
                           )}
                         </Paper>
+
+                        {hasPastTrips && (
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              ...sectionCardSx,
+                              mt: 2,
+                            }}
+                          >
+                            <Stack
+                              direction="row"
+                              justifyContent="space-between"
+                              alignItems="flex-start"
+                              spacing={1.25}
+                              sx={{ mb: 2 }}
+                            >
+                              <Box>
+                                <Typography
+                                  variant="h5"
+                                  fontWeight={800}
+                                  color="#1c1917"
+                                >
+                                  Past Trips
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  Trips you have completed and marked finished.
+                                </Typography>
+                              </Box>
+                              <Button
+                                size="small"
+                                component={RouterLink}
+                                to="/dashboard"
+                                sx={{
+                                  ...compactPillButtonSx,
+                                  color: "#2563eb",
+                                }}
+                              >
+                                View dashboard
+                              </Button>
+                            </Stack>
+
+                            <Grid container spacing={1.5}>
+                              {pastTrips.map((trip, index) => (
+                                <Grid
+                                  item
+                                  xs={12}
+                                  sm={6}
+                                  key={`${trip.title}-${index}-past`}
+                                >
+                                  <Card sx={compactTripCardSx}>
+                                    <Box
+                                      component="img"
+                                      src={trip.photo}
+                                      alt={trip.title}
+                                      sx={{
+                                        width: "100%",
+                                        height: { xs: 150, md: 132 },
+                                        objectFit: "cover",
+                                        bgcolor: "#dbeafe",
+                                      }}
+                                    />
+                                    <CardContent
+                                      sx={{
+                                        p: 1.4,
+                                        "&:last-child": { pb: 1.4 },
+                                      }}
+                                    >
+                                      <Typography
+                                        fontWeight={700}
+                                        sx={{ color: "#1c1917" }}
+                                      >
+                                        {trip.title}
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        color="text.secondary"
+                                        display="block"
+                                      >
+                                        {trip.city || "Travel destination"}
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#64748b" }}
+                                      >
+                                        {trip.date} •{" "}
+                                        {trip.status || "Completed"}
+                                      </Typography>
+
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                        sx={{ mt: 1.5 }}
+                                      >
+                                        <Typography
+                                          fontSize="0.82rem"
+                                          fontWeight={700}
+                                        >
+                                          Budget:{" "}
+                                          {formatPrice(trip.budget || 0)}
+                                        </Typography>
+                                        <Chip
+                                          size="small"
+                                          label="Completed"
+                                          sx={{
+                                            bgcolor: "#d1fae5",
+                                            color: "#166534",
+                                          }}
+                                        />
+                                      </Stack>
+                                    </CardContent>
+                                  </Card>
+                                </Grid>
+                              ))}
+                            </Grid>
+                          </Paper>
+                        )}
                       </Grid>
 
                       {travelSnapshotEnabled && (

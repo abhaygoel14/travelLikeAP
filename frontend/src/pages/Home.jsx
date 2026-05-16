@@ -1,6 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "../styles/home.css";
 import { Container, Row, Col } from "reactstrap";
+import { get, ref } from "firebase/database";
+import { realtimeDb } from "../utils/firebaseConfig";
 import heroVideo01 from "../assets/images/hero-video01.mp4";
 import heroImg01 from "../assets/images/hero-image01.jpg";
 import heroVideo03 from "../assets/images/hero-video03.mp4";
@@ -19,8 +21,55 @@ import Testimonials from "../components/Testimonial/Testimonials";
 import NewsLetter from "../shared/Newsletter";
 import { MediaWithShimmer } from "../shared/TravelLoader";
 
+const defaultHomeBanner = {
+  enabled: true,
+  topLabel: "Featured offer",
+  title: "Plan your next travel memory with confidence",
+  message:
+    "Book curated trips and exclusive routes that turn every journey into a story worth sharing.",
+  ctaText: "Explore now",
+  ctaUrl: "/tours",
+};
+
 const Home = () => {
+  const [homeBanner, setHomeBanner] = useState(defaultHomeBanner);
+
   useEffect(() => {
+    let active = true;
+
+    const loadHomeBanner = async () => {
+      if (!realtimeDb) {
+        if (active) {
+          setHomeBanner(defaultHomeBanner);
+        }
+        return;
+      }
+
+      try {
+        const snapshot = await get(ref(realtimeDb, "siteContent/homeBanner"));
+
+        if (!active) {
+          return;
+        }
+
+        if (snapshot.exists()) {
+          setHomeBanner({
+            ...defaultHomeBanner,
+            ...snapshot.val(),
+          });
+        } else {
+          setHomeBanner(defaultHomeBanner);
+        }
+      } catch (error) {
+        console.warn("Unable to load homepage banner:", error);
+        if (active) {
+          setHomeBanner(defaultHomeBanner);
+        }
+      }
+    };
+
+    loadHomeBanner();
+
     try {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     } catch (e) {
@@ -28,12 +77,37 @@ const Home = () => {
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     }
+
+    return () => {
+      active = false;
+    };
   }, []);
   return (
     <>
       {/* ========== HERO SECTION ========== */}
       <section className="home__hero-section">
         <Container>
+          {homeBanner.enabled !== false && (
+            <div className="home__top-banner">
+              <div className="home__top-banner__inner">
+                <div>
+                  <span className="home__top-banner__label">
+                    {homeBanner.topLabel}
+                  </span>
+                  <h3>{homeBanner.title}</h3>
+                  <p>{homeBanner.message}</p>
+                </div>
+                {homeBanner.ctaEnabled !== false && homeBanner.ctaText ? (
+                  <a
+                    href={homeBanner.ctaUrl || "/tours"}
+                    className="home__top-banner__button"
+                  >
+                    {homeBanner.ctaText}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          )}
           <Row>
             <Col lg="6">
               <div className="hero__content">
@@ -103,6 +177,36 @@ const Home = () => {
           </Row>
         </Container>
       </section>
+
+      <section className="home__review-callout">
+        <Container>
+          <Row className="align-items-center gx-4">
+            <Col lg="4">
+              <div className="home__review-callout__copy">
+                <Subtitle subtitle="Fan reviews" />
+                <h2>Travel stories that build trust</h2>
+                <p>
+                  Explore real feedback from guests who booked with Travel Like
+                  AP. The best journeys are the ones customers tell their
+                  friends about.
+                </p>
+                <a
+                  href="#testimonial-section"
+                  className="home__review-callout__cta"
+                >
+                  Read fan stories
+                </a>
+              </div>
+            </Col>
+            <Col lg="8">
+              <div className="home__review-callout__slider">
+                <Testimonials slidesToShow={1} />
+              </div>
+            </Col>
+          </Row>
+        </Container>
+      </section>
+
       {/* ============================================================== */}
 
       {/* ==================== HERO SECTION START ====================== */}
@@ -195,7 +299,7 @@ const Home = () => {
       {/* ========== GALLERY SECTION END ================ */}
 
       {/* ========== TESTIMONIAL SECTION START ================ */}
-      <section>
+      <section id="testimonial-section">
         <Container>
           <Row>
             <Col lg="12">

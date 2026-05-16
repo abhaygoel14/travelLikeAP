@@ -194,12 +194,15 @@ const SearchBar = ({
                 onBlur={() => {
                   window.setTimeout(() => {
                     setShowSuggestions(false);
-                  }, 120);
+                  }, 200);
                 }}
               />
 
               {shouldShowSuggestionDropdown ? (
-                <div className="search__suggestions">
+                <div
+                  className="search__suggestions"
+                  onMouseDown={(event) => event.preventDefault()}
+                >
                   {locationSuggestions.length ? (
                     locationSuggestions.map((item) => (
                       <button
