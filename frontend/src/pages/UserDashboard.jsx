@@ -716,6 +716,7 @@ const UserDashboard = () => {
   const [fanStories, setFanStories] = useState([]);
   const [fanStoriesLoading, setFanStoriesLoading] = useState(false);
   const [submittingFanStory, setSubmittingFanStory] = useState(false);
+  const [viewingFanStory, setViewingFanStory] = useState(null);
   const [tabLoading, setTabLoading] = useState(true);
   const [currentGreetingDate, setCurrentGreetingDate] = useState(
     () => new Date(),
@@ -1521,6 +1522,36 @@ const UserDashboard = () => {
       setStatus({ severity: "error", message: error.message });
     } finally {
       setSavingMemories(false);
+    }
+  };
+
+  const handleDeleteFanStory = async (storyId) => {
+    if (!storyId || !currentUserUid) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete this fan story you shared? It will be removed from the homepage too.",
+    );
+    if (!confirmed) return;
+
+    try {
+      setSubmittingFanStory(true);
+      const storyRef = ref(realtimeDb, `siteContent/fanStories/${storyId}`);
+      await set(storyRef, null);
+
+      setStatus({
+        severity: "success",
+        message: "Fan story deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting fan story:", error);
+      setStatus({
+        severity: "error",
+        message: error?.message || "Unable to delete that fan story right now.",
+      });
+    } finally {
+      setSubmittingFanStory(false);
     }
   };
 
@@ -2650,14 +2681,62 @@ const UserDashboard = () => {
                             borderRadius: 3,
                             border: "1px solid #dbeafe",
                             bgcolor: "#f8fbff",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            gap: 2,
                           }}
                         >
-                          <Typography fontWeight={700} sx={{ mb: 1 }}>
-                            {myFanStories[0].title || "My travel story"}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {myFanStories[0].message}
-                          </Typography>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography fontWeight={700} sx={{ mb: 1 }}>
+                              {myFanStories[0].title || "My travel story"}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {myFanStories[0].message}
+                            </Typography>
+                          </Box>
+                          <Stack
+                            direction="row"
+                            spacing={0.5}
+                            sx={{ flexShrink: 0 }}
+                          >
+                            <Button
+                              size="small"
+                              variant="text"
+                              onClick={() =>
+                                setViewingFanStory(myFanStories[0])
+                              }
+                              sx={{
+                                color: "#2563eb",
+                                textTransform: "capitalize",
+                                fontSize: "0.85rem",
+                              }}
+                            >
+                              Show More
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="text"
+                              color="error"
+                              startIcon={<DeleteOutlineIcon />}
+                              onClick={() =>
+                                handleDeleteFanStory(myFanStories[0].id)
+                              }
+                              disabled={submittingFanStory}
+                            >
+                              Delete
+                            </Button>
+                          </Stack>
                         </Paper>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
@@ -2669,6 +2748,86 @@ const UserDashboard = () => {
                   </Stack>
                 </Paper>
               )}
+
+              <Dialog
+                open={Boolean(viewingFanStory)}
+                onClose={() => setViewingFanStory(null)}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{
+                  sx: {
+                    borderRadius: 3,
+                    border: "1px solid #dbeafe",
+                  },
+                }}
+              >
+                {viewingFanStory && (
+                  <>
+                    <DialogTitle sx={{ pb: 1 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar
+                          src={viewingFanStory.authorAvatar}
+                          alt={viewingFanStory.authorName}
+                          sx={{
+                            width: 52,
+                            height: 52,
+                            bgcolor: "#dbeafe",
+                          }}
+                        />
+                        <Box sx={{ flex: 1 }}>
+                          <Typography
+                            variant="subtitle1"
+                            fontWeight={800}
+                            color="#1c1917"
+                          >
+                            {viewingFanStory.authorName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {viewingFanStory.createdAt
+                              ? new Date(
+                                  viewingFanStory.createdAt,
+                                ).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "Recently shared"}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </DialogTitle>
+                    <DialogContent dividers sx={{ borderColor: "#dbeafe" }}>
+                      <Stack spacing={2}>
+                        <Box>
+                          <Typography
+                            variant="h6"
+                            fontWeight={700}
+                            color="#1c1917"
+                            sx={{ mb: 1 }}
+                          >
+                            {viewingFanStory.title || "My travel story"}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ lineHeight: 1.8 }}
+                          >
+                            {viewingFanStory.message}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </DialogContent>
+                    <DialogActions sx={{ px: 2, py: 1.5 }}>
+                      <Button
+                        onClick={() => setViewingFanStory(null)}
+                        sx={{ color: "#2563eb" }}
+                      >
+                        Close
+                      </Button>
+                    </DialogActions>
+                  </>
+                )}
+              </Dialog>
 
               <Dialog
                 open={memoryUploadOpen}
@@ -3057,6 +3216,7 @@ const UserDashboard = () => {
                     ...sectionCardSx,
                     pt: { xs: 3, md: 4 },
                   }}
+                  id="upcomingTripsSection"
                 >
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
@@ -3901,12 +4061,17 @@ const UserDashboard = () => {
                             {hasUpcomingBookings ? (
                               <Button
                                 size="small"
-                                component={RouterLink}
-                                to={
-                                  featuredPlan
-                                    ? `/tours/${featuredPlan.id}`
-                                    : "/tours"
-                                }
+                                onClick={() => {
+                                  setTab(2);
+                                  setTimeout(() => {
+                                    const element = document.getElementById(
+                                      "upcomingTripsSection",
+                                    );
+                                    element?.scrollIntoView({
+                                      behavior: "smooth",
+                                    });
+                                  }, 100);
+                                }}
                                 sx={{
                                   ...compactPillButtonSx,
                                   color: "#2563eb",
@@ -3916,7 +4081,7 @@ const UserDashboard = () => {
                                   },
                                 }}
                               >
-                                Details
+                                View All
                               </Button>
                             ) : null}
                           </Stack>

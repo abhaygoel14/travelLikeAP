@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Slider from "react-slick";
 import { get, ref } from "firebase/database";
+import {
+  Avatar,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { realtimeDb } from "../../utils/firebaseConfig";
 import ava01 from "../../assets/images/ava-1.jpg";
 import ava02 from "../../assets/images/ava-2.jpg";
@@ -52,45 +63,50 @@ const normalizeFanStories = (value = {}) =>
 
 const Testimonials = () => {
   const [stories, setStories] = useState([]);
-  const [expandedItems, setExpandedItems] = useState({});
+  const [viewingFanStory, setViewingFanStory] = useState(null);
 
-  const toggleExpanded = (id) => {
-    setExpandedItems((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
+  const storyItems = useMemo(
+    () => (stories.length ? stories : DEFAULT_TESTIMONIALS),
+    [stories],
+  );
 
-  const settings = {
-    dots: true,
-    infinite: true,
-    autoplay: true,
-    speed: 1000,
-    swipeToSlide: true,
-    autoplaySpeed: 2000,
-    slidesToShow: 3,
-
-    responsive: [
-      {
-        breakpoint: 992,
-        settings: {
-          slidesToShow: 2,
-          slidesToScroll: 1,
-          infinite: true,
-          dots: true,
+  const settings = useMemo(() => {
+    const count = Math.max(1, storyItems.length);
+    const slidesToShow = Math.min(3, count);
+    return {
+      dots: true,
+      infinite: count > slidesToShow,
+      autoplay: count > slidesToShow,
+      speed: 1000,
+      swipeToSlide: true,
+      autoplaySpeed: 2000,
+      slidesToShow,
+      slidesToScroll: 1,
+      adaptiveHeight: true,
+      centerMode: false,
+      rows: 1,
+      responsive: [
+        {
+          breakpoint: 992,
+          settings: {
+            slidesToShow: Math.min(2, count),
+            slidesToScroll: 1,
+            infinite: count > 2,
+            dots: true,
+          },
         },
-      },
-      {
-        breakpoint: 576,
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1,
-          infinite: true,
-          dots: true,
+        {
+          breakpoint: 768,
+          settings: {
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            infinite: false,
+            dots: true,
+          },
         },
-      },
-    ],
-  };
+      ],
+    };
+  }, [storyItems.length]);
 
   useEffect(() => {
     let active = true;
@@ -121,49 +137,129 @@ const Testimonials = () => {
     };
   }, []);
 
-  const storyItems = useMemo(
-    () => (stories.length ? stories : DEFAULT_TESTIMONIALS),
-    [stories],
-  );
-
   return (
-    <Slider {...settings}>
-      {storyItems.map((item) => {
-        const isExpanded = !!expandedItems[item.id];
-        const shouldShowToggle = item.message.length > 120;
-
-        return (
-          <div key={item.id} className="testimonial py-4 px-3">
-            <p
-              className={`testimonial__message ${isExpanded ? "expanded" : ""}`}
-            >
-              {item.message}
-            </p>
-            {shouldShowToggle && (
+    <>
+      <Slider {...settings}>
+        {storyItems.map((item) => {
+          return (
+            <div key={item.id} className="testimonial py-4 px-3">
+              <p
+                className="testimonial__message"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {item.message}
+              </p>
               <button
                 type="button"
                 className="testimonial__more"
-                onClick={() => toggleExpanded(item.id)}
+                onClick={() => setViewingFanStory(item)}
               >
-                {isExpanded ? "Show less" : "Read more"}
+                Show More
               </button>
-            )}
 
-            <div className="d-flex align-items-center gap-4 mt-3">
-              <img
-                src={item.authorAvatar || ava01}
-                className="w-25 h-25 rounded-2"
-                alt={item.authorName || "Story author"}
-              />
-              <div>
-                <h6 className="mb-0 mt-3">{item.authorName || "Traveler"}</h6>
-                <p>{item.title || "Fan story"}</p>
+              <div className="d-flex align-items-center gap-4 mt-3">
+                <img
+                  src={item.authorAvatar || ava01}
+                  className="w-25 h-25 rounded-2"
+                  alt={item.authorName || "Story author"}
+                />
+                <div>
+                  <h6 className="mb-0 mt-3">{item.authorName || "Traveler"}</h6>
+                  <p>{item.title || "Fan story"}</p>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
-    </Slider>
+          );
+        })}
+      </Slider>
+
+      <Dialog
+        open={Boolean(viewingFanStory)}
+        onClose={() => setViewingFanStory(null)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            border: "1px solid #dbeafe",
+          },
+        }}
+      >
+        {viewingFanStory && (
+          <>
+            <DialogTitle sx={{ pb: 1 }}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Avatar
+                  src={viewingFanStory.authorAvatar}
+                  alt={viewingFanStory.authorName}
+                  sx={{
+                    width: 52,
+                    height: 52,
+                    bgcolor: "#dbeafe",
+                  }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={800}
+                    color="#1c1917"
+                  >
+                    {viewingFanStory.authorName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {viewingFanStory.createdAt
+                      ? new Date(viewingFanStory.createdAt).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )
+                      : "Recently shared"}
+                  </Typography>
+                </Box>
+              </Stack>
+            </DialogTitle>
+            <DialogContent dividers sx={{ borderColor: "#dbeafe" }}>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography
+                    variant="h6"
+                    fontWeight={700}
+                    color="#1c1917"
+                    sx={{ mb: 1 }}
+                  >
+                    {viewingFanStory.title || "Fan story"}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.8 }}
+                  >
+                    {viewingFanStory.message}
+                  </Typography>
+                </Box>
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 2, py: 1.5 }}>
+              <Button
+                onClick={() => setViewingFanStory(null)}
+                sx={{ color: "#2563eb" }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+    </>
   );
 };
 
